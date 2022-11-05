@@ -9,9 +9,11 @@ category: Core
 created: 2022-11-05
 ---
 
-## Simple Summary
+## Overview
 
-This VIP changes the Verida DID Method implementation to store DID Documents within the Verida network instead of on the blockchain. Instead, Decentralized Identifiers (DIDs) will be written to the blockchain only once, with a pointer to the Verida URI where the DID document can be found. This will mean any DID Document update can happen without a blockchain transaction; providing cheaper and faster updates. This architecture will also enable the "right to be deleted" at the highest possible level, where DID owners can delete their DID documents from the off-chain Verida network storage.
+This VIP changes the Verida DID Method implementation to store DID Documents within the Verida network instead of on the blockchain. Instead, Decentralized Identifiers (DIDs) will be written to the blockchain only once, with a pointer to the Verida network storage nodes where the DID document can be found. This will mean any DID Document update can happen without a blockchain transaction; providing cheaper and faster updates.
+
+This architecture will also enable the "right to be deleted" at the highest possible level, where DID owners can delete their DID documents from the off-chain Verida network storage.
 
 ## Motivation
 
