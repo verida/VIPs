@@ -118,7 +118,7 @@ Creating a specific `migrateDIDDocument()` endpoint enables an existing DID Docu
 The method signature is:
 
 ```
-writeDIDDocument(didDocuments: string[], signature) {}
+migrateDIDDocument(didDocuments: string[], signature) {}
 ```
 
 Where:
@@ -135,7 +135,24 @@ The storage node will then create the `did-document` database and store all the 
 
 ##### deleteDIDDocument()
 
-@todo
+This method enables a DID controller to remove a DID Document from a storage node.
+
+The method signature is:
+
+```
+deleteDIDDocument(did: string, signature: string)
+```
+
+Where:
+
+- `did` is the DID Document to remove from the storage node
+- `signature` is a signature, signed by the DID controller private key, of the string `Delete DID Document ${did} at ${timestamp/60}`
+
+The storage node will verify:
+
+- `signature` is valid for any timestamp in the previous or future 60 seconds
+
+Th storage node will then delete the `did-document` database.
 
 #### Registering
 
