@@ -2,7 +2,7 @@
 eip: 2
 title: Store DID Documents off-chain
 author: Chris Were <chris@verida.io>
-discussions-to: 
+discussions-to: #dev-blockchain on Verida Discord
 status: Stagnant
 type: Standards Track
 category: Core
