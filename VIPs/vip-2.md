@@ -1,5 +1,5 @@
 ---
-eip: 2
+vip: 2
 title: Verida DID Method
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-blockchain on Verida Discord
