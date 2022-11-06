@@ -1,6 +1,6 @@
 ---
 eip: 2
-title: Store DID Documents off-chain
+title: Verida DID Method
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-blockchain on Verida Discord
 status: Stagnant
@@ -9,13 +9,17 @@ category: Core
 created: 2022-11-05
 ---
 
-## Overview
+# Overview
 
-This VIP changes the Verida DID Method implementation to store DID Documents within the Verida network instead of on the blockchain. Instead, Decentralized Identifiers (DIDs) will be written to the blockchain once, with a pointer to the Verida network storage node(s) where the DID document can be found. This enables DID Document updates to occur without a blockchain transaction; providing significantly cheaper and faster updates.
+This VIP proposes an updated Verida DID Method implementation that leverages a blockchain smart contract to define a standard list of URI's that can be used to locate a DID Document for a given DID.
 
-This architecture will also enable the _right to be deleted_ at the highest possible level, where DID owners can delete their DID documents from the off-chain Verida network storage.
+This enables DID Documents to be updated or deleted without a blockchain transaction; providing significantly cheaper and faster updates.
 
-## Motivation
+This architecture will also enable the _right to be deleted_ at the highest possible level, where DID owners can delete their DID documents from the off-chain DID Document storage service.
+
+This architecture is also flexible enough to be used for ___any___ DID method within the same smart contract.
+
+# Motivation
 
 The current protocol architecture requires writing to the blockchain to create or update any DID Document. Each blockchain write has an economic cost (currently charged in $MATIC) and takes time to confirm (currently 10-15 seconds). The cost and speed of writing DID Documents to the blockchain creates a poor user experience and severely hurts adoption for new users.
 
@@ -27,22 +31,22 @@ The current DID method implemented by the Verida protocol forks [ethr-did-resolv
 
 Storing the complete DID Document on-chain is permanent. There is a potential for identifying information to be placed in these critical documents. It is not possible to delete these documents from the blockchain. This change ensures a user has self-custody over their DID Document and can delete it forever, providing enhanced privacy and control over their identity.
 
-## Specification
+# Specification
 
 This proposal is a complete replacement of the [current blockcahin based DID Registry implementation](https://github.com/verida/blockchain-contracts/tree/develop/VDA-DID-Registry) that forks [ethr-did-resolver](https://github.com/decentralized-identity/ethr-did-resolver).
 
-### Smart contract
+## Smart contract
 
-A `DID Registry` smart contract will a map a Decentralized Identifier (`DID`) to a list of Verida compatible storage nodes (`DID Storage Nodes`) that store the actual DID Document
+A `DID Registry` smart contract will a map a Decentralized Identifier (`DID`) to a list of URI's where the actual DID Document can be found.
 
 Example data structure:
 
 ```
 dids: {
   'did:vda:0xb794f5ea0ba39494ce839613fffba74279579268': [
-    'https://au.storage.verida.io',
-    'https://au-22.storage.alchemy.io',
-    'https://au-3.storage.figment.io'
+    'https://au.storage.verida.io/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268',
+    'https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268',
+    'https://au-3.storage.figment.io/dids/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268'
   ],
   'did:vda:0xc894f5ea0ba39494ce839613fffba74279579379': [...],
   ...
@@ -56,7 +60,7 @@ As with most DID Method implementations, anyone is free to create a DID and regi
 The smart contract will support the following methods:
 
 1. `register(did: string, endpoints: string[], signature: string)` &mdash; Register a list of endpoints for a `did` where the DID Document can be located. Updates the endpoints if the `did` is already registered. Increments the `nonce` for the `did`.
-2. `lookup(did: string): [nonce: number, endpoints: string[]` &mdash; Lookup the endpoints for a given `did`. Returns the current `nonce` value (representing the latest version number) and the array of endpoints.
+2. `lookup(did: string): [nonce: number, endpoints: string[]]` &mdash; Lookup the endpoints for a given `did`. Returns the current `nonce` and the array of endpoints.
 3. `nonce(did: string): number` &mdash; Obtain the next `nonce` required to update a list of `did` endpoints.
 
 The `register()` method will verify the `signature` is a signature generated from a`proofString`, where:
@@ -65,157 +69,131 @@ The `register()` method will verify the `signature` is a signature generated fro
 proofString = sign(`${did}/${nonce}/${endpoints[0}/${endpoints[1}/...}`, didPrivateKey)
 ```
 
-### DID Document
+## DID Document
 
-#### Creation
+### Create and Update
 
-Empty DID Documents will be created in memory via the Verida SDK using the existing `@verida/did-document` package.
+DID Documents are stored as [JSON](https://www.w3.org/TR/did-core/#json) or [JSON-LD](https://www.w3.org/TR/did-core/#json-ld) representations. It's recommended to use the `did-document` package (or custom fork) to generate the DID Documents.
 
-The DID Document will contain a `proof` that is a string representing the full DID Document that has been hashed using keccak256 and signed with ed25519, the default Ethereum based signature scheme.
+The DID Document ___MUST___ include the following properties:
 
-#### Storage
+- [versionId](https://www.w3.org/TR/did-spec-registries/#versionid)
+- [created](https://www.w3.org/TR/did-spec-registries/#created)
+- [updated](https://www.w3.org/TR/did-spec-registries/#updated)
+- [deactivated](https://www.w3.org/TR/did-spec-registries/#deactivated)
+- `proof` &mdash; A string representing the full DID Document as a JSON encoded string that has been hashed using keccak256 and signed with ed25519, the default Ethereum based signature scheme.
 
-DID Documents will be submitted to a new storage node endpoint `writeDIDDocument()`. DID Documents can be migrated between storage nodes and retain all their version history. This functionality requires custom, privileged, endpoint for creating and updating stored copies of the DID Document.
+The implementation on how to create the document is out of scope. ie: For a HTTP endpoint a HTTP server will be required and provide a way to create DID Documents on the server, likely stored on disk or in a database.
 
-##### writeDIDDocument()
+An endpoint should make every effort to verify the DID Document is valid before creation:
 
-Creating a specific `writeDIDDocument()` endpoint enables a new identity to store their DID Document before it's publicly registered in the blockcahin `DID Registry` contract. The Verida protocol requires looking up the `DID` in the `DID Registry` before authorizing access to a database. When creating a DID Document, this entry does not yet exist on-chain, so the usual protocol authorization can not occur. As such, it's necessary to create this custom endpoint to manually authenticate the DID Document and store it on behalf of the DID.
-
-The method signature is:
-
-```
-writeDIDDocument(didDocument: string) {}
-```
-
-The storage node will perform the following verification checks:
-
-1. There is currently no entry for the given `DID` in the `DID Registry` _OR_ there is currently an entry and it references this storage node endpoint
+1. Ensure there is currently no entry for the given `DID` in the `DID Registry` _OR_ there is currently an entry and it references this storage node endpoint
 2. The DID Document is a valid DID Document using the `did-document` npm package
-3. The DID Document has a valid `proof` signature
+3. The DID Document has valid properties (ie: valid `proof`, `versionId` etc.)
 
-Any failed verification checks will return a `401 Unauthorized` HTTP response.
+Endpionts ___MUST___ store all known versions of a DID Document.
 
-Once all the above checks have successfully completed, the storage node will save the DID Document.
+### Deletion
 
-For creating DID Documents:
+It ___MUST___ be possible for a DID Controller to delete their DID Document from an endpoint.
 
-1. Create a new database based on the hash of the `DID`, context name `Verida: DID Registry` and database name `did-document`
-2. Set the database permissions to be owner write, public read
+It is up to each endpoint to determine how a DID cCntroller can delete a DID Document.
 
-For creating and updating DID Documents:
+## DID Registration
 
-1. Save the DID document to the `did-document` database with a document `_id` equal to the `DID` (ie: `did:vda:0x...`)
-2. Set a `timestamp` property equal to the current unix epoch timestamp (to support timestamp based version retreival necessary for key revocation)
+The DID will be registered on the blockchain via the `DID Registry` smart contract.
 
-Upon success the storage node will return a `200 OK` HTTP response.
+Registering a DID requires:
 
-This process will be repeated for as many storage nodes as desired by the `DID` owner. This enables redundancy and availability of the DID Document across the Verida network.
+1. A `nonce`. When creating a DID for the first time `nonce=0`, whereas subsequent updates must use the next `nonce` obtained by incrementing the value returned from calling `nonce(did: string)` on the smart contract.
+2. A valid `signature` generated as per the [Smart Contract](#smart-contract)
 
-##### migrateDIDDocument()
+A new DID is registered by calling `register(did: string, endpoints: string[], signature: string)` on the `DID Registry` smart contract
 
-Creating a specific `migrateDIDDocument()` endpoint enables an existing DID Document, along with all previous versions, to be migrated to a new storage node. This is necessary if a DID controller whiches to add a new storage node replica to the network after DID creation. This may be to increase the number of copies for increased redundancy or to replace an existing storage node.
+### Endpoint Discovery
 
-The method signature is:
+The DID Document is stored at one or more URI endpoints.
 
-```
-migrateDIDDocument(didDocuments: string[], signature) {}
-```
+These endpoints can be obtained by calling `lookup(did:string)` on the `DID Registry` smart contract.
 
-Where:
+### Retrieval
 
-- `didDocuments` is an array of all previous, timestamped versions of the DID Document.
-- `signature` is a signature, signed by the DID controller private key, of the string represented by `JSON.encode(didDocuments)`
+DID Documents can be retrieved in a universal way from any valid endpoint.
 
-The storage node will verify:
+Endpoints that are storing DID Documents must support the following optional query parameters:
 
-- `signature` is valid
-- Each `didDocument` is valid, following the same criteria as `writeDIDDocument()`
+1. [versionId](https://www.w3.org/TR/did-spec-registries/#versionId-param) &mdash; Returns the DID Document that matches the requested `versionId`.
+2. [versionTime](https://www.w3.org/TR/did-spec-registries/#versionTime-param) &mdash; Returns the DID Document that was valid at the given timestamp.
 
-The storage node will then create the `did-document` database and store all the `didDocuments` in the same manner as `writeDIDDocument()`
+The latest DID Document version is returned if no query parameters are provided.
 
-##### deleteDIDDocument()
+Example requests:
 
-This method enables a DID controller to remove a DID Document from a storage node.
+1. `https://au.storage.verida.io/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268` &mdash; Resolve latest DID Document from `au.storage.verida.io`
+2. `https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268?versionTime` &mdash; Resolve the DID Document version from `au-3 3. .storage.alchemy.io` that was valid at `2016-10-17T02:41:00Z`.
 
-The method signature is:
+### Resolving
 
-```
-deleteDIDDocument(did: string, signature: string)
-```
+A DID Document is resolved by:
 
-Where:
+1. Completing a [DID Document Lookup](#did-document-lookup) to locate the list of service endpoints storing the DID Document
+2. [Retreiving](#did-document-retrieval) of the DID Document from each of the valid endpoints
+3. Reaching consensus on the correct DID Document
+4. Validating the DID Document
+5. Returning the DID Document
 
-- `did` is the DID Document to remove from the storage node
-- `signature` is a signature, signed by the DID controller private key, of the string `Delete DID Document ${did} at ${timestamp/60}`
+#### Consensus
 
-The storage node will verify:
+The retreived DID Documents will be compared to ensure consistency. If they are different, an attempt at obtaining > 50% consensus on the correct version will be executed. If consensus can not be reached the DID Document fails to resolve.
 
-- `signature` is valid for any timestamp in the previous or future 60 seconds
+#### Verification
 
-Th storage node will then delete the `did-document` database.
+The resolved DID Document will then be verified as follows:
 
-#### Registering
-
-The `DID` will be registered on the blockchain via the `DID Registry` smart contract.
-
-The Verida SDK will set the `nonce` to `0` for a new `DID` or fetch the latest `nonce` for an update. It will generate a valid signature, signed by the `DID` private key.
-
-The Verida SDK will support calling `register(did: string, endpoints: string[], signature: string)` on the `DID Registry` smart contract
-
-#### Lookup
-
-The Verida SDK will provide a Verida DID Resolver package (`vda-did-resolver`) that generates a standard `getResolver()` function that implements a `resolve(did: string, timestamp?: number)` method. This ensures the Verida DID method will be compatible with existing DID resolver libraries.
-
-The `resolve()` method will call the `lookup()` method on the `DID Registry` smart contract to determine the service endpoints where the DID Document can be found.
-
-The SDK will call a method `getDidDocument(did: string, timestamp? number)` on each of the endpoints. This method will open the public, read only database (`did-document`) for the application context (`Verdida: DID Registry`) and return the latest DID Document where `_id` matches the `did`. The optional _timestamp_ parameter is used to select the version of the DID document that was correct at the given timestamp. If _timestamp_ is not provided, the latest DID Document is returned.
-
->_Note: It is possible for the user to open the database remotely without calling this method. This method will return the DID Document without requiring the client side to make a direct connection to the CouchDB database, significantly requiing the dependencies required and increasing performance._
-
-The retreived DID Documents will be compared to ensure consistency. If they are different, an attempt at obtaining >50% consensus on the correct version will be executed. If consensus can not be reachd the SDK will throw a `Invalid DID Document` Error.
-
-The resolved DID document will then be verified as follows:
-
-1. The DID Document `versionId` returned from the storage node matches the `nonce` returned from `lookup()`. This ensures the latest DID Document was returned
+1. The DID Document `versionId` returned from the storage node matches the `nonce` returned from `lookup()`. This ensures the latest DID Document was returned (assuming the client is seeking the latest).
 2. The DID Document `proof` was generated from an exact copy of the current DID Document and signed by the private key that controls the DID.
 
-#### Versioning
+### Versioning
 
-#### Key rotation
+DID Documents ___MUST___ be versioned.
 
-It is possible to rotate _verificationMethod_ keys by writing an updated DID Document via 
+This specification ensures all DID Documents have a `versionId` parameter, that all endpoints store all versions and that DID Documents can be queried by `versionId`.
 
-https://www.w3.org/TR/did-core/#verification-method-rotation
+Additionally, the ability to query a DID Document by `timestamp`, ensures the correct DID Document version at a particular time can be resolved. This is critical for key rotation as previously signed data may be using a public key no longer in the latest DID Document.
 
+### Key rotation
 
+It is possible to [rotate _verificationMethod_ keys](https://www.w3.org/TR/did-core/#verification-method-rotation) by writing an updated DID Document with new public keys.
 
-## Backwards compatibility
+# Backwards compatibility
 
-This will not be backwards compatible with the existing centralized DID Registry. Users will be required to create new `DID`s.
+This will not be backwards compatible with the existing centralized Verida DID Registry. Users will be required to create new DIDs and previously created DIDs will no longer resolve.
 
-## Security considerations
+# Security considerations
 
-The DID Document is stored in a database with public read, owner write permissions. This ensures only the DID Document controller can create, update or delete the DID Document via the Verida protocol.
-
-The storage node operator may be malicious and alter the DID Document, but that is protected via the `nonce`, `versionId` and `proof` verifications below. DID controllers can store their DID Document across multiple storage nodes with different operators. This ensures one malicious operator can be identified (and their response discarded) assuming > 50% of endpoints are trusted.
+An endpoint operator may be malicious and alter the DID Document, but that is protected via the `nonce`, `versionId` and `proof` verifications below. DID controllers can store their DID Document across multiple storage nodes with different endpoint operators. This ensures one malicious operator can be identified (and their response discarded) assuming > 50% of endpoints are trusted.
 
 There is a possibility of replay attacks, where someone attempts to submit an old (previously submitted) list of endpoints to the `DID Registry`. The `nonce` avoids these types of attacks.
 
-There is a possibility of a malicious storage node operator returning an old DID Document version. Ensuring the `nonce` and the `versionId` match ensures consistency between the blockchain's record of truth of the current version and the version returned by the storage node.
+There is a possibility of a malicious endpoint operator returning an old DID Document version. Ensuring the `nonce` and the `versionId` match ensures consistency between the blockchain's record of truth of the current version and the version returned by the storage node.
 
-There is a possiblity of a malicious storage node operator generating a vulnerable DID Document that replaces a valid DID Document. The `proof` embedded in the DID Document avoids any third party tampering or generating an invalid DID Document.
+There is a possiblity of a malicious endpoint operator generating a vulnerable DID Document that replaces a valid DID Document. The `proof` embedded in the DID Document avoids any third party tampering or generating an invalid DID Document.
 
-## Redundancy
+# Redundancy
 
-There is a possibility of a storage node becoming unavailable (either temporarily or permanently). DID Documents can be stored across an unlimimited number of storage nodes. This ensures redundancy in the event one or more storage nodes become unavailable.
+There is a possibility of an endpoint becoming unavailable (either temporarily or permanently). It is expected taht DID Documents will be stored across any number of storage nodes. This ensures redundancy in the event one or more storage nodes become unavailable.
 
-## Compliance
+Ideally DID Documents will be stored across a minimum of 3 endpoints.
 
-@todo
+# Blockchain
 
-At a bare minimum, address the _Must_ have documentation requirements from https://www.w3.org/TR/did-core/#methods
+The smart contract will be deployed to the Polygon PoS network due to it's low confirmation times, low cost and widespread adoption.
+
+# Compliance
+
+@todo Expand this to cover address the _Must_ have documentation requirements from https://www.w3.org/TR/did-core/#methods
 https://www.w3.org/TR/did-core/#method-operations
 
-## Copyright
+# Copyright
 
 Copyright and related rights waived via [CC0](../LICENSE.md).
