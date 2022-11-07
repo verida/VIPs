@@ -11,25 +11,27 @@ created: 2022-11-05
 
 # Overview
 
-This VIP proposes an updated Verida DID Method implementation that leverages a blockchain smart contract to define a standard list of URI's that can be used to locate a DID Document for a given DID.
+This VIP proposes an updated Verida DID Method implementation that leverages a blockchain smart contract to define a list of URI's that can be used to locate a DID Document for a given DID using standardized REST API calls.
 
 This enables DID Documents to be updated or deleted without a blockchain transaction; providing significantly cheaper and faster updates.
 
 This architecture will also enable the _right to be deleted_ at the highest possible level, where DID owners can delete their DID documents from the off-chain DID Document storage service.
 
-This architecture is also flexible enough to be used for ___any___ DID method within the same smart contract.
+This architecture is also flexible enough to be used for _any_ DID method within the same smart contract.
 
 # Motivation
 
-The current protocol architecture requires writing to the blockchain to create or update any DID Document. Each blockchain write has an economic cost (currently charged in $MATIC) and takes time to confirm (currently 10-15 seconds). The cost and speed of writing DID Documents to the blockchain creates a poor user experience and severely hurts adoption for new users.
+The current protocol architecture requires writing to the blockchain to create or update any DID Document. Each blockchain write has an economic cost and takes time to confirm (currently 10-15 seconds). The cost and speed of writing DID Documents to the blockchain creates a poor user experience and severely hurts adoption for new users.
 
-The protocol currently writes to the blockchain when; creating a DID, creating a new application context (when signing into an application for the first time), updating the storage node endpoints and any key rotation. This changes reduces this to a single blockchain write at creation for the lifetime of the DID.
+The protocol currently writes to the blockchain when; creating a DID, creating a new application context (when signing into an application for the first time), updating the storage node endpoints and key rotation. This change reduces the blockchain wites to a single transaction at creation for the lifetime of the DID (unless the user decides to rotate the DID Document storage endpoints).
 
-As the price of the underlying token ($MATIC) increases, the cost to maintain a DID will proportionally increase for every single DID Document update. This change provides significantly better long term cost predicatibility for maintaining identities on the network, which is critical for scale.
+As the price of the underlying token blockchain primary token increases, the cost to maintain a DID will proportionally increase for every single DID Document update. This change provides significantly better long term cost predicatibility for maintaining identities on the network, which is critical for scale.
 
 The current DID method implemented by the Verida protocol forks [ethr-did-resolver](https://github.com/decentralized-identity/ethr-did-resolver) that has significant limitations in the types of DID Documents that can be stored on-chain. These limitations make sense as they are working around storage, cost and performance limitations related to storing data on the blockchain. This change enables storing any DID-Core compliant DID Document without limitation and without requiring any protocol or smart contract upgrades.
 
 Storing the complete DID Document on-chain is permanent. There is a potential for identifying information to be placed in these critical documents. It is not possible to delete these documents from the blockchain. This change ensures a user has self-custody over their DID Document and can delete it forever, providing enhanced privacy and control over their identity.
+
+Blockchain technology is constantly getting faster and cheaper. Separating the storage of the DID Document from the lookup of where the DID Document is stored, makes for a ___much___ lighter use of blockchain. This drastically simplifies the process of migrating to a cheaper / faster blockchain in the future. This also makes it viable to leverage DID's referenced across multiple blockchains with a future upgrade, rather than relying on a single chain.
 
 # Specification
 
@@ -73,7 +75,7 @@ proofString = sign(`${did}/${nonce}/${endpoints[0}/${endpoints[1}/...}`, didPriv
 
 ### Create and Update
 
-DID Documents are stored as [JSON](https://www.w3.org/TR/did-core/#json) or [JSON-LD](https://www.w3.org/TR/did-core/#json-ld) representations. It's recommended to use the `did-document` package (or custom fork) to generate the DID Documents.
+DID Documents are stored as [JSON](https://www.w3.org/TR/did-core/#json) or [JSON-LD](https://www.w3.org/TR/did-core/#json-ld) representations. It's recommended to use the [did-document (or custom fork)](https://www.npmjs.com/package/did-document) to generate the DID Documents.
 
 The DID Document ___MUST___ include the following properties:
 
@@ -130,7 +132,7 @@ The latest DID Document version is returned if no query parameters are provided.
 Example requests:
 
 1. `https://au.storage.verida.io/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268` &mdash; Resolve latest DID Document from `au.storage.verida.io`
-2. `https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268?versionTime` &mdash; Resolve the DID Document version from `au-3 3. .storage.alchemy.io` that was valid at `2016-10-17T02:41:00Z`.
+2. `https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268?versionTime` &mdash; Resolve the DID Document version from `au-22. .storage.alchemy.io` that was valid at `2016-10-17T02:41:00Z`.
 
 ### Resolving
 
@@ -164,6 +166,12 @@ Additionally, the ability to query a DID Document by `timestamp`, ensures the co
 ### Key rotation
 
 It is possible to [rotate _verificationMethod_ keys](https://www.w3.org/TR/did-core/#verification-method-rotation) by writing an updated DID Document with new public keys.
+
+it is possible to [rotate the DID ocontroller](https://www.w3.org/TR/did-core/#changing-the-did-controller) by changing the [controller` property of the DID Document](https://www.w3.org/TR/did-core/#did-controller).
+
+### Verification method revocation
+
+It is possible to [revoke a verificationMethod](https://www.w3.org/TR/did-core/#verification-method-revocation) by writing an updated DID Document with the previous `verificationMethod` removed.
 
 # Backwards compatibility
 
