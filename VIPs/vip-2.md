@@ -45,31 +45,42 @@ Example data structure:
 
 ```
 dids: {
-  'did:vda:0xb794f5ea0ba39494ce839613fffba74279579268': [
+  '0xb794f5ea0ba39494ce839613fffba74279579268': [
     'https://au.storage.verida.io/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268',
     'https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268',
     'https://au-3.storage.figment.io/dids/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268'
   ],
-  'did:vda:0xc894f5ea0ba39494ce839613fffba74279579379': [...],
+  '0xc894f5ea0ba39494ce839613fffba74279579379': [...],
   ...
 }
 ```
+
+Note: For performance reasons, just the `DID Address` (`0xb794f5ea0ba39494ce839613fffba74279579268`) is used when making requests to the DID Registry.
 
 As with most DID Method implementations, anyone is free to create a DID and register it with the `DID Registry` smart contract.
 
 The smart contract will support the following methods:
 
-1. `register(did: string, endpoints: string[], signature: string)` &mdash; Register a list of endpoints for a `did` where the DID Document can be located. Updates the endpoints if the `did` is already registered. Increments the `nonce` for the `did`.
-2. `lookup(did: string): endpoints: string[]` &mdash; Lookup the endpoints for a given `did`. Returns an array of endpoints.
-3. `nonce(did: string): number` &mdash; Obtain the next `nonce` required to update a list of `did` endpoints.
+1. `register(didAddress: address, endpoints: string[], signature: string)` &mdash; Register a list of endpoints for a `did` where the DID Document can be located. Updates the endpoints if the `did` is already registered. Increments the `nonce` for the `did`. Sets the `didControllerAddress` to be the `didAddress`.
+2. `lookup(didAddress: address): [didControllerAddress: address, endpoints: string[]]` &mdash; Lookup the endpoints for a given `did`. Returns the current DID Controller address and an array of endpoints. Result is only returned if the DID exists in the smart contract and is not revoked.
+3. `setController(didAddress: address, signature: string)` &mdash; Change the DID that controls the DID Document. The new `didAddress` must sign for all new changes to the DID endpoints in this smart contract or the DID Document.
+5. `revoke(didAddress: address)` &mdash; Revoke a DID so it is no longer valid. This can not be undone.
+6. `nonce(didAddress: address): number` &mdash; Obtain the next `nonce` required to update a list of `did` endpoints.
 
-The `register()` method will verify the `signature` is a signature generated from a`proofString`, where:
+
+The **`register()`** method will verify the `signature` is a signature generated from a`proofString`, where:
 
 ```
-proofString = sign(`${did}/${nonce}/${endpoints[0}/${endpoints[1}/...}`, didPrivateKey)
+proofString = sign(`${didAddress}/${nonce}/${endpoints[0}/${endpoints[1}/...}`, didPrivateKey)
 ```
 
-The `nonce` value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
+The **`setController()`** method will verify the `signature` is a signature generated from a `proofString`, where:
+
+```
+proofString = sign(`${oldControllerDidAddress}/${nonce}/controller/${newControllerDidAddress}`, oldControllerDidPrivateKey)
+```
+
+The **`nonce`** value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
 
 >Question: Support flagging a `DID` as `deleted` on-chain?
 
@@ -166,11 +177,13 @@ A DID Document is resolved by:
 
 The retreived DID Documents will be compared to ensure consistency. If they are different, an attempt at obtaining > 50% consensus on the correct version will be executed. If consensus can not be reached the DID Document fails to resolve.
 
-#### Verification
+#### Validation
 
-The resolved DID Document will then be verified as follows:
+The resolved DID Document is validated as follows:
 
+1. The DID Document is a valid document meeting the [DID Core](https://www.w3.org/TR/did-core/) specification.
 1. The DID Document `proof` was generated from an exact copy of the current DID Document and signed by the private key that controls the DID.
+2. The DID Controller in the DID Document matches the DID Controller stored on-chain.
 
 ### Versioning
 
@@ -184,11 +197,12 @@ Additionally, the ability to query a DID Document by `timestamp`, ensures the co
 
 It is possible to [rotate _verificationMethod_ keys](https://www.w3.org/TR/did-core/#verification-method-rotation) by writing an updated DID Document with new public keys.
 
-it is possible to [rotate the DID ocontroller](https://www.w3.org/TR/did-core/#changing-the-did-controller) by changing the [controller` property of the DID Document](https://www.w3.org/TR/did-core/#did-controller).
+it is possible to [rotate the DID ocontroller](https://www.w3.org/TR/did-core/#changing-the-did-controller) by:
 
-### Verification method revocation
+1. Writing an updated DID Document that changes the [controller property of the DID Document](https://www.w3.org/TR/did-core/#did-controller).
+2. Calling the `setController()` method on the `DID Registry` smart contract
 
-It is possible to [revoke a verificationMethod](https://www.w3.org/TR/did-core/#verification-method-revocation) by writing an updated DID Document with the previous `verificationMethod` removed.
+_Note: Client libraries **must** ensure both of those steps are completed for a successful controller key rotation otherwise DID resolution and version verification will fail.
 
 # Backwards compatibility
 
@@ -196,7 +210,7 @@ This will not be backwards compatible with the existing centralized Verida DID R
 
 # Security considerations
 
-An endpoint operator may be malicious by altering the DID Document or returning an older version. DID controllers can store their DID Document across multiple storage nodes with different endpoint operators. This ensures one malicious operator can be identified (and their response discarded) assuming > 50% of endpoints are trusted. The consensus mechanism uses the `versionId` and `proof` verifications to ensure the documents themselves can be trusted.
+An endpoint operator may be malicious by altering the DID Document or returning an older version. DID controllers can store their DID Document across multiple storage nodes with different endpoint operators. This ensures one malicious operator can be identified (and their response discarded) assuming > 50% of endpoints are trusted. The consensus mechanism uses the `versionId` and `proof` verifications to ensure the documents themselves can be trusted. An option to hash every update and store that on chain could be added in the future for enhanced trust that may be necessary for high profile DIDs.
 
 There is a possibility of replay attacks, where someone attempts to submit an old (previously submitted) list of endpoints to the `DID Registry`. The `nonce` avoids these types of attacks.
 
