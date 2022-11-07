@@ -37,7 +37,7 @@ The following new endpoints will be supported:
 - `PUT /did/${did}` &mdash; Update an existing DID Document
 - `DELETE /did/${did}` &mdash; Delete an existing DID Document
 - `GET /did/${did}` &mdash; Get an existing DID Document
-- `POST /did/migrate/${did}` &mdash; Migrate an existing DID Document to this storage node
+- `POST /did/${did}/migrate` &mdash; Migrate an existing DID Document to this storage node
 
 ### Create
 
