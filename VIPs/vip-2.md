@@ -57,12 +57,10 @@ dids: {
 
 As with most DID Method implementations, anyone is free to create a DID and register it with the `DID Registry` smart contract.
 
->Question: Support flagging a `DID` as `deleted` on-chain?
-
 The smart contract will support the following methods:
 
 1. `register(did: string, endpoints: string[], signature: string)` &mdash; Register a list of endpoints for a `did` where the DID Document can be located. Updates the endpoints if the `did` is already registered. Increments the `nonce` for the `did`.
-2. `lookup(did: string): [nonce: number, endpoints: string[]]` &mdash; Lookup the endpoints for a given `did`. Returns the current `nonce` and the array of endpoints.
+2. `lookup(did: string): endpoints: string[]` &mdash; Lookup the endpoints for a given `did`. Returns an array of endpoints.
 3. `nonce(did: string): number` &mdash; Obtain the next `nonce` required to update a list of `did` endpoints.
 
 The `register()` method will verify the `signature` is a signature generated from a`proofString`, where:
@@ -70,6 +68,10 @@ The `register()` method will verify the `signature` is a signature generated fro
 ```
 proofString = sign(`${did}/${nonce}/${endpoints[0}/${endpoints[1}/...}`, didPrivateKey)
 ```
+
+The `nonce` value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
+
+>Question: Support flagging a `DID` as `deleted` on-chain?
 
 ## DID Document
 
@@ -107,7 +109,7 @@ The DID will be registered on the blockchain via the `DID Registry` smart contra
 
 Registering a DID requires:
 
-1. A `nonce`. When creating a DID for the first time `nonce=0`, whereas subsequent updates must use the next `nonce` obtained by incrementing the value returned from calling `nonce(did: string)` on the smart contract.
+1. A `nonce`. When creating a DID for the first time `nonce=0`, whereas subsequent updates to the list of endpoints must use the next `nonce` obtained by incrementing the value returned from calling `nonce(did: string)` on the smart contract.
 2. A valid `signature` generated as per the [Smart Contract](#smart-contract)
 
 A new DID is registered by calling `register(did: string, endpoints: string[], signature: string)` on the `DID Registry` smart contract
@@ -122,17 +124,33 @@ These endpoints can be obtained by calling `lookup(did:string)` on the `DID Regi
 
 DID Documents can be retrieved in a universal way from any valid endpoint.
 
-Endpoints that are storing DID Documents must support the following optional query parameters:
+Endpoints that are storing DID Documents must support returning a valid response via a HTTP `GET` request. Endpoints must support the following optional query parameters:
 
 1. [versionId](https://www.w3.org/TR/did-spec-registries/#versionId-param) &mdash; Returns the DID Document that matches the requested `versionId`.
 2. [versionTime](https://www.w3.org/TR/did-spec-registries/#versionTime-param) &mdash; Returns the DID Document that was valid at the given timestamp.
+3. `allVersions` &mdash; Returns all stored versions of the DID Document if value is `true`.
 
 The latest DID Document version is returned if no query parameters are provided.
+
+When `allVersions` is requested, the response should be a JSON encoded ordered array:
+
+```
+{
+  versions: [
+    documentVersion0,
+    documentVersion1,
+    documentVersion2,
+  ],
+}
+```
+
+`version` is a version ordered (0 first) array of all previous versions of the DID Document.
 
 Example requests:
 
 1. `https://au.storage.verida.io/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268` &mdash; Resolve latest DID Document from `au.storage.verida.io`
-2. `https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268?versionTime` &mdash; Resolve the DID Document version from `au-22. .storage.alchemy.io` that was valid at `2016-10-17T02:41:00Z`.
+2. `https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268?versionTime=2016-10-17T02:41:00Z` &mdash; Resolve the DID Document version from `au-22. .storage.alchemy.io` that was valid at `2016-10-17T02:41:00Z`.
+3. `https://au-22.storage.alchemy.io/did/0xb794f5ea0ba39494ce839613fffba74279579268?allVersions=true` &mdash; Return all versions of a DID Document.
 
 ### Resolving
 
@@ -152,8 +170,7 @@ The retreived DID Documents will be compared to ensure consistency. If they are 
 
 The resolved DID Document will then be verified as follows:
 
-1. The DID Document `versionId` returned from the storage node matches the `nonce` returned from `lookup()`. This ensures the latest DID Document was returned (assuming the client is seeking the latest).
-2. The DID Document `proof` was generated from an exact copy of the current DID Document and signed by the private key that controls the DID.
+1. The DID Document `proof` was generated from an exact copy of the current DID Document and signed by the private key that controls the DID.
 
 ### Versioning
 
@@ -179,11 +196,9 @@ This will not be backwards compatible with the existing centralized Verida DID R
 
 # Security considerations
 
-An endpoint operator may be malicious and alter the DID Document, but that is protected via the `nonce`, `versionId` and `proof` verifications below. DID controllers can store their DID Document across multiple storage nodes with different endpoint operators. This ensures one malicious operator can be identified (and their response discarded) assuming > 50% of endpoints are trusted.
+An endpoint operator may be malicious by altering the DID Document or returning an older version. DID controllers can store their DID Document across multiple storage nodes with different endpoint operators. This ensures one malicious operator can be identified (and their response discarded) assuming > 50% of endpoints are trusted. The consensus mechanism uses the `versionId` and `proof` verifications to ensure the documents themselves can be trusted.
 
 There is a possibility of replay attacks, where someone attempts to submit an old (previously submitted) list of endpoints to the `DID Registry`. The `nonce` avoids these types of attacks.
-
-There is a possibility of a malicious endpoint operator returning an old DID Document version. Ensuring the `nonce` and the `versionId` match ensures consistency between the blockchain's record of truth of the current version and the version returned by the storage node.
 
 There is a possiblity of a malicious endpoint operator generating a vulnerable DID Document that replaces a valid DID Document. The `proof` embedded in the DID Document avoids any third party tampering or generating an invalid DID Document.
 
