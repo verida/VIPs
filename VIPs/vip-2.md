@@ -82,8 +82,6 @@ proofString = sign(`${oldControllerDidAddress}/${nonce}/controller/${newControll
 
 The **`nonce`** value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
 
->Question: Support flagging a `DID` as `deleted` on-chain?
-
 ## DID Document
 
 ### Create and Update
