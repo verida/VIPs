@@ -63,21 +63,27 @@ The smart contract will support the following methods:
 
 1. `register(didAddress: address, endpoints: string[], signature: string)` &mdash; Register a list of endpoints for a `did` where the DID Document can be located. Updates the endpoints if the `did` is already registered. Increments the `nonce` for the `did`. Sets the `didControllerAddress` to be the `didAddress`.
 2. `lookup(didAddress: address): [didControllerAddress: address, endpoints: string[]]` &mdash; Lookup the endpoints for a given `did`. Returns the current DID Controller address and an array of endpoints. Result is only returned if the DID exists in the smart contract and is not revoked.
-3. `setController(didAddress: address, signature: string)` &mdash; Change the DID that controls the DID Document. The new `didAddress` must sign for all new changes to the DID endpoints in this smart contract or the DID Document.
-5. `revoke(didAddress: address)` &mdash; Revoke a DID so it is no longer valid. This can not be undone.
+3. `setController(didAddress: address, controller: address, signature: string)` &mdash; Change the DID that controls the DID Document. The new `controller` must sign for all new changes to the DID endpoints in this smart contract or the DID Document.
+5. `revoke(didAddress: address, signature: string)` &mdash; Revoke a DID so it is no longer valid. This can not be undone.
 6. `nonce(didAddress: address): number` &mdash; Obtain the next `nonce` required to update a list of `did` endpoints.
 
 
 The **`register()`** method will verify the `signature` is a signature generated from a`proofString`, where:
 
 ```
-proofString = sign(`${didAddress}/${nonce}/${endpoints[0}/${endpoints[1}/...}`, didPrivateKey)
+proofString = sign(`${didAddress}/${endpoints[0}/${endpoints[1}/.../${nonce}}`, didPrivateKey)
 ```
 
 The **`setController()`** method will verify the `signature` is a signature generated from a `proofString`, where:
 
 ```
-proofString = sign(`${oldControllerDidAddress}/${nonce}/controller/${newControllerDidAddress}`, oldControllerDidPrivateKey)
+proofString = sign(`${oldControllerDidAddress}/controller/${newControllerDidAddress}/${nonce}`, oldControllerDidPrivateKey)
+```
+
+The **`revoke()`** method will verify the `signature` is a signature generated from a `proofString`, where:
+
+```
+proofString = sign(`${oldControllerDidAddress}/revoke/${newControllerDidAddress}/${nonce}`, oldControllerDidPrivateKey)
 ```
 
 The **`nonce`** value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
