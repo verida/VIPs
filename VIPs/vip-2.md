@@ -77,13 +77,13 @@ proofString = sign(`${didAddress}/${endpoints[0}/${endpoints[1}/.../${nonce}}`, 
 The **`setController()`** method will verify the `signature` is a signature generated from a `proofString`, where:
 
 ```
-proofString = sign(`${oldControllerDidAddress}/controller/${newControllerDidAddress}/${nonce}`, oldControllerDidPrivateKey)
+proofString = sign(`${didAddress}/setController/${newControllerDidAddress}/${nonce}`, oldControllerDidPrivateKey)
 ```
 
 The **`revoke()`** method will verify the `signature` is a signature generated from a `proofString`, where:
 
 ```
-proofString = sign(`${oldControllerDidAddress}/revoke/${newControllerDidAddress}/${nonce}`, oldControllerDidPrivateKey)
+proofString = sign(`${didAddress}/revoke/${nonce}`, controllerPrivateKey)
 ```
 
 The **`nonce`** value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
