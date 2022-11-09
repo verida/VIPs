@@ -19,7 +19,7 @@ This requires adding the appropriate REST API endpionts required by the Verida D
 
 ## Storage
 
-DID Documents are stored in the same way as other data on the Verida network. The documents are stored in databases owned and controlled by the DID controller. This ensures the DID controller to be responsible for any document updates or deletion, ensuring self-sovereignty. It also ensures user's are paying for their own DID Document storage when future storage costs are implemented.
+DID Documents are stored in an admin only database (`verida_dids`) with all operations to modify the DID Documents accessible via custom set of `/did/` REST API endpoints.
 
 The Verida protocol requires looking up the `DID` in the `DID Registry` before authorizing access to a database. When creating a DID Document for the first time, this entry does not yet exist on-chain, so the usual protocol authorization can not occur.
 
@@ -61,7 +61,7 @@ The storage node will perform the following verification checks:
 3. The DID Document is a valid DID Document using the `did-document` npm package
 4. The DID Document has a valid `proof` signature
 
-Any failed verification checks will return a `401 Unauthorized` HTTP response.
+Any failed verification checks will return a `400 Bad Request` HTTP response, except invalid `proof` signature which will return `401 Unauthorized`.
 
 Once all the above checks have successfully completed, the storage node will save the DID Document.
 
