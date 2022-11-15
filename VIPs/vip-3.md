@@ -116,6 +116,11 @@ Example request:
 
 ```
 DELETE /did/did:vda:0xb794f5ea0ba39494ce839613fffba74279579268
+```
+
+Header
+
+```
 {
   signature: 'valid sig'
 }
@@ -145,8 +150,15 @@ Example request:
     documentVersion0,
     documentVersion1,
     documentVersion2,
-  ],
-  signature: '<valid sig>'
+  ]
+}
+```
+
+Header:
+
+```
+{
+  signature: 'valid sig'
 }
 ```
 
