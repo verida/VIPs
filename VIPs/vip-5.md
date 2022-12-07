@@ -1,5 +1,5 @@
 ---
-vip: 4
+vip: 5
 title: Verida Personal Data Bridge
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-blockchain on Verida Discord
