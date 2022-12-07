@@ -1,6 +1,6 @@
 ---
 vip: 6
-title: Verida Database: Support Server Side Replication
+title: Verida Database Support Server Side Replication
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-protocol on Verida Discord
 status: Draft
