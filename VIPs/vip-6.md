@@ -75,6 +75,10 @@ This will have the following parameters:
 - `did` (via auth token)
 - `contextName` (via auth token)
 
+If a node is being added or removed it **must** be the last node to have `checkReplication` called. This ensures the node has a list of all the active databases and can ensure it is replicating correctly to the other nodes.
+
+The client SDK should call `checkReplication()` when opening a context to ensure the replication is working as expected.
+
 ### Identify valid storage nodes
 
 This will lookup the DID document and obtain a list of active endpoints for the user DID and context. It will ensure it is pushing data to all the endpoints in the DID document (and remove any it shouldn't be pushing to) for all the databases owned by that user.
@@ -106,7 +110,7 @@ The `source` storage node (SN-A) needs to obtain credentials (username and passw
 
 The credentials are obtained by talking directly to the other node in a trusted manner. A request is made to the endpoint:
 
-`https://storageNodeB/system/replicationAuth(endpointUri, did, contextName, timestampMinutes, signature)`
+`https://storageNodeB/system/replicationCreds(endpointUri, did, contextName, timestampMinutes, signature)`
 
 Where:
 
@@ -146,9 +150,9 @@ The `destination` storage node will respond with:
 
 An end user submits a request to `/user/createDatabase` endpoint on one of the storage nodes. This will set the `_security` document in the database and define the `validate_doc_update()` method. Both of these are configured to support any user with the `${contextHash}-replicater` role, so they will be the same across all storage nodes. CouchDb replication will replicate these documents ensuring permission consistency across all storage nodes.
 
-This storage node will internally call `checkReplication(databaseName: string)` to ensure it is pushing database updates to the other storage nodes.
+This storage node will internally call `checkReplication(databaseName: string)` to ensure it is pushing database updates to the other storage nodes. It's necessary for the all the other nodes to start replicating that database.
 
-It's necessary for the all the other nodes to start replicating that database.
+The database will be added to the list of `context` databases, which will also be syncronized.
 
 Once the database is created the client side will ping the remaining storage nodes: `https://storageNodeA/user/checkReplication?databaseName={databaseName}` to ensure that database is being replicated correctly.
 
@@ -159,3 +163,26 @@ User submits a request to `/user/deleteDatabase` for every storage node. The ser
 # Client side usage
 
 The client SDK can establish a connection to one of the storage nodes for everyday database operations (ie: CRUD) and the server-side replication will ensure all the other nodes have matching data.
+
+# Implementation requirements
+
+The following high level changes need to be made to the Storage Node and Client SDK.
+
+## Storage node
+
+Endpoints:
+
+1. `/system/replicationCreds` - Generate credentials for replicating storage nodes
+2. `/user/checkReplication` - Confirm replication is configured correctly for; all databases OR a single database
+
+Other changes:
+
+1. `components/dbManager/configurePermissions` write function needs to check `userCtx.roles` includes the role `${contextHash}-replicator`
+2. `components/dbManager/configurePermissions` security doc needs to add the role `${contextHash}-replicator` in the `members` list
+3. Refactor the storage of databases in a context to have their own database so they can be syncronized via CouchDB replication
+
+## Client SDK
+
+1. Call `checkReplication()` when opening a context to ensure the replication is working as expected.
+2. Don't start using a new node until it is fully syncronized? (need to check `/status`)
+3. Open a connection to a random (active) endpoint, rather than all the endpoints
