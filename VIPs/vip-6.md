@@ -163,26 +163,3 @@ User submits a request to `/user/deleteDatabase` for every storage node. The ser
 # Client side usage
 
 The client SDK can establish a connection to one of the storage nodes for everyday database operations (ie: CRUD) and the server-side replication will ensure all the other nodes have matching data.
-
-# Implementation requirements
-
-The following high level changes need to be made to the Storage Node and Client SDK.
-
-## Storage node
-
-Endpoints:
-
-1. `/system/replicationCreds` - Generate credentials for replicating storage nodes
-2. `/user/checkReplication` - Confirm replication is configured correctly for; all databases OR a single database
-
-Other changes:
-
-1. `components/dbManager/configurePermissions` write function needs to check `userCtx.roles` includes the role `${contextHash}-replicator`
-2. `components/dbManager/configurePermissions` security doc needs to add the role `${contextHash}-replicator` in the `members` list
-3. Refactor the storage of databases in a context to have their own database so they can be syncronized via CouchDB replication
-
-## Client SDK
-
-1. Call `checkReplication()` when opening a context to ensure the replication is working as expected.
-2. Don't start using a new node until it is fully syncronized? (need to check `/status`)
-3. Open a connection to a random (active) endpoint, rather than all the endpoints
