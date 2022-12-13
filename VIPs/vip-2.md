@@ -11,13 +11,15 @@ created: 2022-11-05
 
 # Overview
 
-This VIP proposes an updated Verida DID Method implementation that leverages a blockchain smart contract to define a list of URI's that can be used to locate a DID Document for a given DID using standardized REST API calls.
+This VIP proposes an updated Verida DID Method implementation that leverages a blockchain smart contract to define a list of URI's that can be used to locate a DID Document for a given DID using standardized HTTP REST API calls.
 
 This enables DID Documents to be updated or deleted without a blockchain transaction; providing significantly cheaper and faster updates.
 
-This architecture will also enable the _right to be deleted_ at the highest possible level, where DID owners can delete their DID documents from the off-chain DID Document storage service.
+This architecture will also enable the _right to be deleted_ at the highest possible level, where DID controllers can delete their DID documents from the off-chain DID Document storage service.
 
-This architecture is also flexible enough to be used for _any_ DID method within the same smart contract.
+This architecture is similar to DNS, where a small list of addresses provide authority over an unlimited number of endpoints that maintain the actual resolution metadata. With DNS, this metadata is DNS records, in this instance the metadata is the DID Document.
+
+This approach is also flexible enough to support _multiple_ DID methods, using the same approach, within the same smart contract.
 
 # Motivation
 
