@@ -156,6 +156,16 @@ The database will be added to the list of `context` databases, which will also b
 
 Once the database is created the client side will ping the remaining storage nodes: `https://storageNodeA/user/checkReplication?databaseName={databaseName}` to ensure that database is being replicated correctly.
 
+It's necessary to call createDatabase() on all endpoints when creating a database. This is because the database must be created with appropriate permissions (replicator roles). It's not possible to create the database on one endpoint and then replicate that database, as the other endpoint can't have permission to create databases on other endpoints.
+
+CouchDB requires storing credentials in the `_replicator` database for every database that is replicated. As such, it's safer to have a specific replication user (`DB_REPLICATION_USER` in `.env`) that has the special role `relication-local`. This replication user is automatically created when the server starts. All created databases have this user as a `read-only` member allowing the local replication to read any changes and send them to the other endpoints.
+
+>Note: The `replication-local` credentials must not change as they are stored in every replication entry.
+
+>Note: If the endpoint replication credentials change, that will break all the replication
+
+>Note: Need to consider a process to verify replication is working as expected and auto-fix any issues
+
 ## Deleting a database
 
 User submits a request to `/user/deleteDatabase` for every storage node. The server removes all replication entries for that database.
