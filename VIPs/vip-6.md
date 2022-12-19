@@ -37,14 +37,16 @@ The DID document maintains the source of truth of the valid endpoints that shoul
 
 The `destination node` must generate a CouchDb user that enables the `source node` to write new data (via push). It's critical that the user has `read/write` access to the DID context databases, but not have full `admin` access that enables things like adding and removing users from accessing the database.
 
-This can be achieved by creating a storage node `replication user` on the `destination node` for the `source node`. The user will have the following attributes:
+This is achieved by creating a storage node `replication user` on the `destination node` for the `source node`. The user will have the following attributes:
 
-- `username` = `hash(sourceNodeEndpointUri)`
-- `roles` = [`${contextHash}-replicator`]
+- `username` = `hash(sourceNodeEndpointUri)` (ensures each endpoint has a unique username)
+- `roles` = [`${contextHash}-replicator`] (ensures each endpoint has consistent replication permissions for a given application context)
 
-A storage node `replication user` has a `${contextHash}-replicator` role that grants read and write access to all databases in the given context. This is supported via the `members.roles` in each database security document (providing read access) and via our custom `validate_doc_update()` method (providing write access).
+A storage node `replication user` has a `${contextHash}-replicator` role that grants read and write access to all databases in the given context.
 
-A storage node `replication user` can have multiple roles to support permissions for multiple contexts.
+Each database in the application context has this role added to it's `members.roles` attribute to provide read access. Similarly, custom security document in CouchDB (`validate_doc_update()`) accepts write requests for this role.
+
+A storage node `replication user` can have multiple roles to support permissions for multiple contexts. This allows each storage node to only require a single set of credentials for every other storage node it connects to.
 
 Note: `contextHash` is actually a hash of the database owner DID and context name. It is unique for a given DID and context. If the same DID has three contexts on the same storage node, there will be three `contextHash`'s.
 
@@ -55,7 +57,7 @@ Implementation notes:
 3. **User:** The storage node username must be given the role `${contextHash}-replicator`
 4. **Revocation:** A storage node can revoke the `${contextHash}-replicator` role to disable read/write access to databases it should no longer have replication access to
 
->Note: It's not possible to use JWT token authorization for replicaters due to the way CouchDB works. The JWT authentication implementation in CouchDB doesn't read the `roles` property of the `user` specified in the access token. As such, we can't use JWT tokens and specify a `user` to manage access. CouchDB does support specifying a `role` in the JWT token, however it doesn't support revoking access tokens. As such, it will be impossible to revoke that access when a replicater needs to be removed The above approach specifies a `role` in the user and then uses normal HTTP username/password authentication (which does respect the user roles).
+>Note: It's not possible to use JWT token authorization for replicaters due to the way CouchDB works. The JWT authentication implementation in CouchDB doesn't read the `roles` property of the `user` specified in the access token. As such, we can't use JWT tokens and specify a `user` to manage access. CouchDB does support specifying a `role` in the JWT token, however it doesn't support revoking access tokens. As such, it will be impossible to revoke that access when a replicater needs to be removed. The above approach specifies a `role` in the user and then uses normal HTTP username/password authentication (which does respect the user roles).
 
 ## Initiating and revoking replication
 
@@ -65,23 +67,23 @@ Assume we have three storage nodes; SN-A, SN-B, SN-C:
 2. SN-B pushes to SN-A, SN-C
 3. SN-C pushes to SN-A, SN-B
 
-A user can ping each storage node and confirm replication is configured for a given context.
+A user pings each storage node to confirm replication is configured for a given context.
 
 ie: `https://storageNodeA/user/checkReplication`
 
 This will have the following parameters:
 
+- `did` (required)
+- `contextName` (required)
 - `databaseName` (optional parameter, otherwise checks all databases)
-- `did` (via auth token)
-- `contextName` (via auth token)
 
-If a node is being added or removed it **must** be the last node to have `checkReplication` called. This ensures the node has a list of all the active databases and can ensure it is replicating correctly to the other nodes.
+If a node is being added or removed it **must** be the last node to have `checkReplication` called. This ensures the new node has a list of all the active databases and can ensure it is replicating correctly to the other nodes.
 
-The client SDK should call `checkReplication()` when opening a context to ensure the replication is working as expected.
+The client SDK will call `checkReplication()` when opening a context to ensure the replication is working as expected.
 
-### Identify valid storage nodes
+### Verify valid storage nodes
 
-This will lookup the DID document and obtain a list of active endpoints for the user DID and context. It will ensure it is pushing data to all the endpoints in the DID document (and remove any it shouldn't be pushing to) for all the databases owned by that user.
+The DID document will be fetched, to obtain a list of active endpoints for the user DID and context. The storage node will ensure it is pushing data to all the endpoints in the DID Document (and remove any it shouldn't be pushing to) for all the databases owned by that user.
 
 This ensures the DID Document is the source of truth for the list of active database replicas for a `context`.
 
@@ -89,14 +91,14 @@ This ensures the DID Document is the source of truth for the list of active data
 
 The storage node may identify it has been added to the list of endpoints. The storage node doesn't need to do anything as the other nodes will contact it to initialize replication.
 
-The storage node may identify a new replication node has been added. The storage node will request credentials from the new node (see below) and will create replication entries to `push` all the `context` databases to the new node.
+The storage node may identify a new replication node has been added. The storage node will request credentials from the new replication node (see below) and will create replication entries to `push` all the `context` databases to the new node.
 
 This will include pushing the database that maintains a list of all the `context` databases.
 
 Implementation notes:
 
 - Need to refactor the storage of databases in a context to have their own database so they can be syncronized via CouchDB replication
-- Need the client SDK to not start using the new node until it is fully syncronized (need to check `/status`)?
+- Need the client SDK to not start using the new node until it is fully syncronized (need to check `/status`?)
 
 ### Node has been removed
 
@@ -148,28 +150,32 @@ The `destination` storage node will respond with:
 
 ## Creating a database
 
-An end user submits a request to `/user/createDatabase` endpoint on one of the storage nodes. This will set the `_security` document in the database and define the `validate_doc_update()` method. Both of these are configured to support any user with the `${contextHash}-replicater` role, so they will be the same across all storage nodes. CouchDb replication will replicate these documents ensuring permission consistency across all storage nodes.
+The client SDK submits a request to the `/user/createDatabase` endpoint on one of the storage nodes. This will set the `_security` document in the database and define the `validate_doc_update()` method. Both of these are configured to support any user with the `${contextHash}-replicater` role, so they will be the same across all storage nodes. CouchDb replication will replicate these documents ensuring consistent permissions across all storage nodes.
 
 This storage node will internally call `checkReplication(databaseName: string)` to ensure it is pushing database updates to the other storage nodes. It's necessary for the all the other nodes to start replicating that database.
 
-The database will be added to the list of `context` databases, which will also be syncronized.
+The database will be added to the list of `context` databases, which will also be syncronized to the other storage nodes.
 
-Once the database is created the client side will ping the remaining storage nodes: `https://storageNodeA/user/checkReplication?databaseName={databaseName}` to ensure that database is being replicated correctly.
+Once the database is created, the client side will ping the remaining storage nodes: `https://storageNodeA/user/checkReplication?databaseName={databaseName}` to ensure that database is being replicated correctly.
 
-It's necessary to call createDatabase() on all endpoints when creating a database. This is because the database must be created with appropriate permissions (replicator roles). It's not possible to create the database on one endpoint and then replicate that database, as the other endpoint can't have permission to create databases on other endpoints.
+It's necessary for the SDK to call `createDatabase()` on all endpoints when creating a database. It's not possible to rely on CouchDB replication to create the database as the replicator credentials (intentionally) don't have permission to create any database on the other storage nodes.
 
-CouchDB requires storing credentials in the `_replicator` database for every database that is replicated. As such, it's safer to have a specific replication user (`DB_REPLICATION_USER` in `.env`) that has the special role `relication-local`. This replication user is automatically created when the server starts. All created databases have this user as a `read-only` member allowing the local replication to read any changes and send them to the other endpoints.
+CouchDB requires storing credentials in the `_replicator` database for every database that is replicated. As such, storage nodes have a dedicated replication user (`DB_REPLICATION_USER` in `.env`) that has the special role `relication-local`. This replication user is automatically created when the server starts. All databases have this user as a `read-only` member allowing the local replication to read any changes and send them to the other endpoints.
 
->Note: The `replication-local` credentials must not change as they are stored in every replication entry.
+>Note: The `replication-local` credentials must not change as they are stored in every entry in the `_replicator` database. Changing the credentials will break all replication that has already been configured.
 
->Note: If the endpoint replication credentials change, that will break all the replication
+## Auto-repairing replication
 
->Note: Need to consider a process to verify replication is working as expected and auto-fix any issues
+@todo Need to consider a process to verify replication is working as expected and auto-fix any issues
 
 ## Deleting a database
 
-User submits a request to `/user/deleteDatabase` for every storage node. The server removes all replication entries for that database.
+The client SDK submits a request to `/user/deleteDatabase` for every storage node. The server removes all replication entries for that database.
 
 # Client side usage
 
 The client SDK can establish a connection to one of the storage nodes for everyday database operations (ie: CRUD) and the server-side replication will ensure all the other nodes have matching data.
+
+The replication will occur server side.
+
+This maximises efficiency for clients, ensuring they don't need to maintain a connection to every storage node replica for the current application context.
