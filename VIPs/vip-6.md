@@ -164,13 +164,15 @@ CouchDB requires storing credentials in the `_replicator` database for every dat
 
 >Note: The `replication-local` credentials must not change as they are stored in every entry in the `_replicator` database. Changing the credentials will break all replication that has already been configured.
 
-## Auto-repairing replication
-
-@todo Need to consider a process to verify replication is working as expected and auto-fix any issues
-
 ## Deleting a database
 
 The client SDK submits a request to `/user/deleteDatabase` for every storage node. The server removes all replication entries for that database.
+
+# Database change log
+
+The user database maintains a change log that tracks every `create`, `update` and `delete` database request from the Client SDK. These changelog entries are timestamped (for ordering) and signed by the controlling DID.
+
+These change logs are automatically replicated as part of the user database list. Each storage node uses this as the source of truth for ensuring the correct databases exist, have correct permissions and have correct replication.
 
 # Client side usage
 
@@ -179,3 +181,32 @@ The client SDK can establish a connection to one of the storage nodes for everyd
 The replication will occur server side.
 
 This maximises efficiency for clients, ensuring they don't need to maintain a connection to every storage node replica for the current application context.
+
+# Auto-repair
+
+There is code in the `checkReplication()` method on the storage node that gracefully cleans up the following issues:
+
+1. A database fails to `create` on a storage node
+2. A database fails to `update` on a storage node
+3. A database fails to `delete` on a storage node
+4. A database replication fails to be created on a storage node
+5. A database replication fails to be deleted on a storage node
+6. Storage node is removed from the application context
+7. Storage node is temporarily unavailable
+
+(`1`,`2`,`3`) is resolved by ensuring the current databases match the databases found in the list of application context databases maintained on the storage node.
+
+(`4`, `5`) is resolved by ensuring the current replicated databases match the databases found in the list of application context databases maintained on the storage node.
+
+`6` is resolved by detecting the storage node is no longer included in the DID document and deletes all data and replication associated with the application context.
+
+`7` is resolved in different ways depending on the scenario:
+
+1. Failure to `create`, `update`, `delete` a database on a storage node on the client side will fail quickly and will be auto-resolved next time `checkReplication()` is run on the node (when it becomes available).
+2. Replication failure between nodes will be gracefully handled by CouchDB replication processes that will retry with a backoff function.
+3. The Client SDK ensures it only talks to storage nodes with the most up-to-date data, giving the opportunity for temporarily down storage nodes to repair themselves and catch up
+
+# Security risks
+
+1. A malicious storage node could attempt to inject fake databases into the database containing all the valid databases for an application context. Similarly they could attempt to update the permissions or delete a database. The Client SDK signs all database changes and this changelog is also stored against each database entry. The storage node verifies this signed changelog before making any changes. This also ensures `_deleted` is ignored.
+2. A malicious storage node could attempt to replicate local databases for a known DID, context and database name to a remote database. This will not work because the remote database will not have granted the malicious storage node read/write access for that storage node to that database.
