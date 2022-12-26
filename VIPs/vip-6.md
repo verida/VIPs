@@ -154,11 +154,11 @@ The client SDK submits a request to the `/user/createDatabase` endpoint on one o
 
 This storage node will internally call `checkReplication(databaseName: string)` to ensure it is pushing database updates to the other storage nodes. It's necessary for the all the other nodes to start replicating that database.
 
-The database will be added to the list of `context` databases, which will also be syncronized to the other storage nodes.
+The database will be added to the list of `context` databases, which will also be syncronized to the other storage nodes. This ensures the database is created on a storage node when `checkReplication()` is called.
+
+It's necessary for the SDK to also call `createDatabase()` on all endpoints when creating a database. It's not possible to rely on CouchDB replication to update the `context` database on each storage node before `checkReplication()` is called. This ensures the database is created and replication will be initialized correctly for newly created databases.
 
 Once the database is created, the client side will ping the remaining storage nodes: `https://storageNodeA/user/checkReplication?databaseName={databaseName}` to ensure that database is being replicated correctly.
-
-It's necessary for the SDK to call `createDatabase()` on all endpoints when creating a database. It's not possible to rely on CouchDB replication to create the database as the replicator credentials (intentionally) don't have permission to create any database on the other storage nodes.
 
 CouchDB requires storing credentials in the `_replicator` database for every database that is replicated. As such, storage nodes have a dedicated replication user (`DB_REPLICATION_USER` in `.env`) that has the special role `relication-local`. This replication user is automatically created when the server starts. All databases have this user as a `read-only` member allowing the local replication to read any changes and send them to the other endpoints.
 
