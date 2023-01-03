@@ -160,6 +160,14 @@ Example file:
 ]
 ```
 
+- `id`: Unique alphanumeric string that identifies the storage node
+- `name`: Human readable label for the storage node
+- `description`: Human readable description of the storage node
+- `datacenter`: Unique id of the data center, sourced from the `Datacenter Registry`
+- `serviceEndpoint`: Storage node endpoint
+- `establishmentDtate`: ISO 8601 date/time the storage node was made available on the network
+- `countryResidence`: Two character ISO country code
+
 ### Data Centers
 
 The list of official data centers will be maintained in a JSON file at a known URL (`Datacenter Registry`). This URL endpoint will be updated by the Verida Foundation and embedded in the Verida protocol client implementation.
@@ -184,6 +192,12 @@ Example file:
 ]
 ```
 
+- `id`: Unique alphanumeric string that identifies the data center
+- `name`: Human readable label for the data center
+- `description`: Human readable description of the data center
+- `latitude`: Latidude of the data center
+- `longitude`: Longitude of the data center
+
 ### Regions
 
 The list of official regions and their associated countries will be maintained in a JSON file at a known URL (`Datacenter Registry`). This URL endpoint will be updated by the Verida Foundation and embedded in the Verida protocol client implementation.
@@ -193,17 +207,38 @@ This file will be located at:
 1. https://meta.verida.network/registry/regions/testnet.csv
 2. https://meta.verida.network/registry/regions/mainnet.csv
 
-Country codes will be two character alpha representations of the country. Regions will be fixed strings.
 
-The data will be stored as a CSV instead of JSON to save space. The data will be sourced from [an existing csv file](https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv).
+The data will be sourced from [an existing csv file](https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv).
 
 Example file:
 
 ```
-"AF","Afghanistan","Asia"
-"AU","Australia","Oceana"
-"US","United States of America","North America"
+[
+    {
+        "code": "AF",
+        "name": "Afghanistan",
+        "region": "Asia",
+        "sub-region": "Southern Asia"
+    },
+    {
+        "code": "AU",
+        "name": "Australia",
+        "region": "Oceania",
+        "sub-region": "Australia and New Zealand"
+    },
+    {
+        "code": "US",
+        "name": "United States of Amercia",
+        "region": "Americas",
+        "sub-region": "North America"
+    }
+]
 ```
+
+- `code`: Unique 2-character ISO country code
+- `name`: Human readable label for the country
+- `region`: Human readable label for the region
+- `sub-region`: Human readable label for the sub-region
 
 ## Selection
 
@@ -243,7 +278,6 @@ This can be improved in the future by:
 
 1. Pinging more than one server per datacenter to allow for storage nodes with faster connectivity / more resources
 2. Pinging datacenters closest to the user based on their `longitude` / `latitude`.
-
 
 ### Availability filter
 
