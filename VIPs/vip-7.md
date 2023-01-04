@@ -113,8 +113,8 @@ Some governments have the right to access digital infrastructure if it is locate
 
 ### Recommendations
 
-1. Require storage nodes to specify their `countryResidence`. This information will not be used other than to display to the user.
-2. Require storage nodes to specify their `countryLocation` (as per geographic region above). This will be enabled by the storage node specifying their `datacenter`, which includes the `countryLocation`.
+1. Require storage nodes to specify their `countryLocation` (as per geographic region above). This will be enabled by the storage node specifying their `datacenter`, which includes the `countryLocation`.
+2. Legal entity operating the node can be considered in the future.
 
 ## Node operator
 
