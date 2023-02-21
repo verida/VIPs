@@ -37,11 +37,52 @@ Blockchain technology is constantly getting faster and cheaper. Separating the s
 
 # Specification
 
-This proposal is a complete replacement of the [current blockcahin based DID Registry implementation](https://github.com/verida/blockchain-contracts/tree/develop/VDA-DID-Registry) that forks [ethr-did-resolver](https://github.com/decentralized-identity/ethr-did-resolver).
+This proposal is a complete replacement of the blockcahin based Verida DID Registry implementation that forks [ethr-did-resolver](https://github.com/decentralized-identity/ethr-did-resolver).
+
+## Verida DID method (did:vda)
+
+### DID Method Name
+
+The method-name for the Verida DID Method will be identified by the string `vda`.
+A DID that uses the vda DID method MUST begin with the prefix `did:vda`. This prefix string MUST be in lowercase. The remainder of the DID, after the prefix, is as follows:
+
+### Method Identifier
+
+The Verida DID method's identifier is made up of the namespace component. The namespace is defined as a string that identifies the Verida network (e.g., `mainnet`, `testnet`) where the DID reference is stored.
+
+### Unique Identifier
+
+A did:vda DID must be a unique public key hexadecimal string as per the [did-ethr spec](https://github.com/decentralized-identity/ethr-did-resolver/blob/master/doc/did-method-spec.md#method-specific-identifier), namely it must be represented in compressed form (see https://en.bitcoin.it/wiki/Secp256k1).
+
+The genesis (version 0) record in a DID document must have a controller matching this unique identifier.
+
+### Blockchain v DIDs
+
+A Verida DID unique identifier (and correspondinb private key) is generated from an Ethereum public / private key pair. However, this specification clearly separates a DID identifier keypair from a blockchain keypair.
+
+This is similar to how the [cheqd DID method separates the keyparis from Cosmos layer and the identity layer](https://docs.cheqd.io/identity/architecture/adr-list/adr-001-cheqd-did-method#privacy-considerations).
+
+As a result, the blockchain address that creates or updates a DID reference in the DID Registry smart contract will not necessarily be the same as the DID controller.
+
+### Example identifiers
+
+```
+did:vda:testnet:0xb9c5714089478a327f09197987f16f9e5d936e8a
+did:vda:mainnet:0xb9c5714089478a327f09197987f16f9e5d936e8a
+```
+
+### Multiple blockchain registries
+
+In the future, this specification may be upgraded to support multiple blockchain registries. Such an upgraded would likely support [CAIP Blockchain IDs](https://github.com/ChainAgnostic/CAIPs/blob/master/CAIPs/caip-2.md) being an optional inclusion in the DID:
+
+```
+did:vda:testnet:eip55:1:0xb9c5714089478a327f09197987f16f9e5d936e8a
+did:vda:mainnet:starknet:SN_GOERLI:0xb9c5714089478a327f09197987f16f9e5d936e8a
+```
 
 ## Smart contract
 
-A `DID Registry` smart contract will a map a Decentralized Identifier (`DID`) to a list of URI's where the actual DID Document can be found.
+A `DID Registry` smart contract will map a Decentralized Identifier (`DID`) to a list of URI's where the actual DID Document can be found.
 
 Example data structure:
 
@@ -90,6 +131,13 @@ proofString = sign(`${didAddress}/revoke/${nonce}`, controllerPrivateKey)
 
 The **`nonce`** value prevents replay attacks when changing the list of endpoints that a storing the DID Document.
 
+### Blockchain deployment
+
+The smart contract will be deployed on:
+
+- `testnet` - Polygon Mumbai
+- `mainnet` - Polygon PoS
+
 ## DID Document
 
 ### Create and Update
@@ -102,7 +150,7 @@ The DID Document ___MUST___ include the following properties:
 - [created](https://www.w3.org/TR/did-spec-registries/#created)
 - [updated](https://www.w3.org/TR/did-spec-registries/#updated)
 - [deactivated](https://www.w3.org/TR/did-spec-registries/#deactivated)
-- `proof` &mdash; A string representing the full DID Document as a JSON encoded string that has been hashed using keccak256 and signed with ed25519, the default Ethereum based signature scheme.
+- `proof` &mdash; A string representing the full DID Document as a JSON encoded string using the `EcdsaSecp256k1VerificationKey2019` algorithm, to be compatible with Ethereum signatures.
 
 The implementation on how to create the document is out of scope. ie: For a HTTP endpoint a HTTP server will be required and provide a way to create DID Documents on the server, likely stored on disk or in a database.
 
@@ -112,13 +160,39 @@ An endpoint should make every effort to verify the DID Document is valid before 
 2. The DID Document is a valid DID Document using the `did-document` npm package
 3. The DID Document has valid properties (ie: valid `proof`, `versionId` etc.)
 
-Endpionts ___MUST___ store all known versions of a DID Document.
+Endpoints ___MUST___ store all known versions of a DID Document.
+
+### Proof creation
+
+The `proof` in the DID Document is generated as follows:
+
+1. Convert to the JSON object into a string (`JSON.stringify()`)
+2. The resulting JSON is converted to a UTF8 byte string
+3. The byte string is hashed using `keccak256` (`ethers.utils.keccak256()`)
+4. The hash is then signed with the controller private key using `secp256k1` (`ethers.utils.SigningKey.signDigest()`)
+
+This `proof` signature is then added to the JSON object.
+
+This is implemented as [helper method `signProof()` in the Verida DID-Document library](https://github.com/verida/verida-js/blob/9107fa823145ddf746716dbc06c5e219f8b10aa2/packages/did-document/src/did-document.ts#L328)
+
+### Proof verification
+
+The `proof` in the DID Documet is verified as follows:
+
+1. Remove the `proof` property from the JSON object
+2. Convert to the JSON object into a string (`JSON.stringify()`)
+3. The resulting JSON is converted to a UTF8 byte string
+4. The byte string is hashed using `keccak256` (`ethers.utils.keccak256()`)
+5. The signing address is then recovered with `ethers.utils.recoverAddress()` using the `proof` string as the signature
+6. The signing address must match the DID controller
+
+This is implemented as [helper method `verifyProof()` in the Verida DID-Document library](https://github.com/verida/verida-js/blob/9107fa823145ddf746716dbc06c5e219f8b10aa2/packages/did-document/src/did-document.ts#L344)
 
 ### Deletion
 
 It ___MUST___ be possible for a DID Controller to delete their DID Document from an endpoint.
 
-It is up to each endpoint to determine how a DID cCntroller can delete a DID Document.
+It is up to each endpoint to determine how a DID controller can delete a DID Document.
 
 ## DID Registration
 
@@ -179,11 +253,11 @@ A DID Document is resolved by:
 4. Validating the DID Document
 5. Returning the DID Document
 
-#### Consensus
+### Consensus
 
-The retreived DID Documents will be compared to ensure consistency. If they are different, an attempt at obtaining > 50% consensus on the correct version will be executed. If consensus can not be reached the DID Document fails to resolve.
+The retrieved DID Documents will be compared to ensure consistency. If they are different, an attempt at obtaining > 50% consensus on the correct version will be executed. If consensus can not be reached the DID Document fails to resolve.
 
-#### Validation
+### Validation
 
 The resolved DID Document is validated as follows:
 
