@@ -13,7 +13,7 @@ created: 2022-11-10
 
 The Verida SDK will provide a Verida DID Resolver package (`vda-did-resolver`) that supports creating, updating and fetching DID Documents. It will provide a standard `getResolver()` function to ensure the Verida DID method will be compatible with existing DID resolver libraries.
 
-# Implementation
+# Specification
 
 This section defines the SDK methods that implements DID Document management.
 
@@ -94,3 +94,9 @@ This is a four step process:
 2. Call [register(didAddress: address, endpoints: string[], signature: string)](https://github.com/verida/VIPs/blob/develop/VIPs/vip-2.md#smart-contract) on the `DID Registry` smart contract with the modified list of endpoints. `signature` is signed using the `privateKey` parameter.
 3. Fetch all historical versions of the DID Document by calling the [GET REST API endpoint](https://github.com/verida/VIPs/blob/develop/VIPs/vip-3.md#get) with `allVersions=true` on all existing endpoints. If `verifyAllVersions=true` then verify the DID Document versions across all storage nodes are all identicial.
 4. Migrate the historical versions of the DID Document the new endpoint via a [POST REST API request](https://github.com/verida/VIPs/blob/develop/VIPs/vip-3.md#migrate). `signature` is signed using the `privateKey` parameter.
+
+# Implementations
+
+There is a typescript implmentation available that implements `getResoler()`:
+
+[@verida/vda-did-resolver](https://github.com/verida/verida-js/tree/main/packages/vda-did-resolver).

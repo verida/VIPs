@@ -187,6 +187,12 @@ The DID Document is stored in a database with public read, owner write permissio
 
 The [security considerations of the Verida DID Method](./vip-2.md#security-considerations) also apply.
 
+# Implementations
+
+There is a basic servicer implementation available that implements most of this specification
+
+[@verida/storage-node: didService](https://github.com/verida/storage-node/tree/develop/src/services/didStorage).
+
 # Copyright
 
 Copyright and related rights waived via [CC0](../LICENSE.md).

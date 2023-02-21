@@ -306,6 +306,27 @@ Ideally DID Documents will be stored across a minimum of 3 endpoints.
 
 The smart contract will be deployed to the Polygon PoS network due to it's low confirmation times, low cost and widespread adoption.
 
+# Implementations
+
+There is a solidity implmentation available that implements this specification:
+
+[VDA-DID-Registry](https://github.com/verida/blockchain-contracts/tree/develop/VDA-DID-Registry).
+
+There is a client side typescript library that makes it easy to use this smart contract to create, update and delete DIDs:
+
+[@verida/vda-did](https://www.npmjs.com/package/@verida/vda-did) ([source code](https://github.com/verida/verida-js/tree/main/packages/vda-did))
+
+The Verida typescript implementation has a user friendly library that wraps all this functionality:
+
+[@verida/did-client](https://www.npmjs.com/package/@verida/did-client) ([source code](https://github.com/verida/verida-js/tree/main/packages/did-client))
+
+# Related
+
+Also see:
+
+- [VIP-3: DID Document Storage on the Verida Network](./vip-3.md)
+- [VIP-4: Verida DID Resolver](./vip-4.md)
+
 # Compliance
 
 @todo Expand this to cover address the _Must_ have documentation requirements from https://www.w3.org/TR/did-core/#methods
