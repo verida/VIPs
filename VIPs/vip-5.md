@@ -3,7 +3,7 @@ vip: 5
 title: Verida Personal Data Bridge
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-blockchain on Verida Discord
-status: Draft
+status: Review
 type: Standards Track
 category: Extension
 created: 2022-12-07

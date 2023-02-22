@@ -3,7 +3,7 @@ vip: 6
 title: Verida Database Support Server Side Replication
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-protocol on Verida Discord
-status: Draft
+status: Final
 type: Standards Track
 category: Core
 created: 2022-12-07
