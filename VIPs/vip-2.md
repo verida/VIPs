@@ -308,7 +308,7 @@ The smart contract will be deployed to the Polygon PoS network due to it's low c
 
 # Implementations
 
-There is a solidity implmentation available that implements this specification:
+There is a solidity implementation available that implements this specification:
 
 [VDA-DID-Registry](https://github.com/verida/blockchain-contracts/tree/develop/VDA-DID-Registry).
 
