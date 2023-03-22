@@ -3,7 +3,7 @@ vip: 7
 title: Storage Node Discovery &amp; Selection (off-chain)
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-protocol on Verida Discord
-status: Draft
+status: Review
 type: Standards Track
 category: Core
 created: 2022-01-03
