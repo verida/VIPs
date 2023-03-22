@@ -1,6 +1,6 @@
 ---
 vip: 7
-title: Storage Node Discovery &amp; Selection
+title: Storage Node Discovery &amp; Selection (off-chain)
 author: Chris Were <chris@verida.io>
 discussions-to: #dev-protocol on Verida Discord
 status: Draft
@@ -11,7 +11,7 @@ created: 2022-01-03
 
 # Overview
 
-The selection of storage nodes occurs when a DID is first created. The storage nodes are used to store the actual DID Documents and the same nodes are typically (but not necessarily) used to store data for each application context.
+The selection of storage nodes occurs when a DID is first created and when a context is connected to for the first time. The storage nodes are used to store the actual DID Documents and the same nodes are typically (but not necessarily) used to store data for each application context.
 
 This VIP provides a specification for the discovery of the available storage nodes and default rules for selecting an appropriate storage node.
 
@@ -30,7 +30,7 @@ It's necessary to provide a simple storage node discovery and selection capabili
 
 # Discovery
 
-Storage nodes must register theselves with the protocol so they can be discovered by new users. These storage nodes will provide global metadata that can assist new users select the most appropriate storage nodes to use.
+Storage nodes must register themselves with the protocol so they can be discovered by new users. These storage nodes will provide global metadata that can assist new users select the most appropriate storage nodes to use.
 
 The protocol will provide a default set of logic to determine the most appropriate storage nodes for a new user, however users will be able to override this and manually select the storage nodes they wish to use. It is, after all, their data.
 
@@ -38,11 +38,13 @@ Self-hosted storage nodes can be created and used by advanced users. They don't 
 
 The discovery process will be implemented in two phases.
 
-## Phase 1
+## Phase 1 (off-chain)
+
+(this phase)
 
 Verida will manually verify storage node operators and maintain a list of trusted storage nodes with accurate metadata about each storage node.
 
-## Phase 2
+## Phase 2 (on-chain)
 
 A Verida smart contract will be deployed that permits any storage node operator to register themselves on the network.
 
@@ -72,7 +74,7 @@ The location of the storage node could consist of the following relevant metadat
 
 ## Recommendation
 
-1. A registry of all datacenters will be created (`Datacenter Registry`) that has a `uniqueId`, `name`, `countryLocation`, `latitude` and `longitude`.
+1. A registry of all data centers will be created (`Datacenter Registry`) that has a `uniqueId`, `name`, `countryLocation`, `latitude` and `longitude`.
 2. Each storage node will be included in the `Storage Node Registry` and specify the `uniqueId` of the datacenter where the node is located.
 3. A registry of all regions will be created (`Region Registry`) that maps `country` to `region`. This will be helpful for the client protocol to narrow down the most appropriate storage nodes to consider for selection.
 
@@ -160,7 +162,7 @@ Example file:
 ]
 ```
 
-- `id`: Unique alphanumeric string that identifies the storage node
+- `id`: Universally unique (UUID v4) 36 character string that identifies the storage node
 - `name`: Human readable label for the storage node
 - `description`: Human readable description of the storage node
 - `datacenter`: Unique id of the data center, sourced from the `Datacenter Registry`
@@ -192,7 +194,7 @@ Example file:
 ]
 ```
 
-- `id`: Unique alphanumeric string that identifies the data center
+- `id`: Universally unique (UUID v4) 36 character string that identifies the storage node
 - `name`: Human readable label for the data center
 - `description`: Human readable description of the data center
 - `latitude`: Latidude of the data center
@@ -277,7 +279,7 @@ The first storage node in each datacenter group will be pinged to obtain the lat
 This can be improved in the future by:
 
 1. Pinging more than one server per datacenter to allow for storage nodes with faster connectivity / more resources
-2. Pinging datacenters closest to the user based on their `longitude` / `latitude`.
+2. Pinging data centers closest to the user based on their `longitude` / `latitude`.
 
 ### Availability filter
 
@@ -287,7 +289,11 @@ As such, when pinging servers to measure latency, the `/status` endpoint will be
 
 # Backwards compatibility
 
+Not applicable.
+
 # Security considerations
+
+To be considered.
 
 # Copyright
 
