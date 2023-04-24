@@ -19,6 +19,8 @@ This is phase 2 of [VIP-7: Storage node discovery and selection (off-chain)](./v
 
 This VIP does not implement any token based staking or slashing of nodes, it's purely focused on node addition, removal and discovery.
 
+It's expected that the operations relating to selecting storage nodes and handling the removal of nodes will be primarily managed by the Verida protocol and wallets that implement the Verida network.
+
 # Motivation
 
 The current storage node database is centralized and needs to be stored on-chain to decentralize the discovery and selection of nodes on the network.
@@ -69,7 +71,7 @@ An `establishmentDate` will be saved that matches the current unix timestamp (`b
 Unregister a storage node from the network at the specified date:
 
 1. `didAddress`: The DID that is to be removed from the network
-2. `unregisterDatetime`: The unix timestamp of when the storage node should no longer be available for selection. Must be at least 28 days in the future.
+2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to become unavailable and their data to be deleted from `unregisterDatetime` onwards.
 3. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
 
 Note: This does not mean the node is no longer active and managing data for users on the network. It just means it is no longer discoverable for new connections.
