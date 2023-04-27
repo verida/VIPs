@@ -61,7 +61,7 @@ This method registers a new endpoint on the network:
 2. `endpointURI`: The storage node endpoint. Must be only one `endpointURI` registered at any time.
 3. `countryCode`: Unique two-character string code (see [VIP-7](./vip-7.md))
 4. `regionCode`: Unique region string code (see [VIP-7](./vip-7.md))
-5. `datacenterId`: Unique datacenter identifier. Must match a datacenter previously created with `addDatacenter()`.
+5. `datacenterId`: Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
 6. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
 
 An `establishmentDate` will be saved that matches the current unix timestamp (`block.timestamp`).
