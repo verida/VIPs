@@ -49,7 +49,7 @@ The current storage node database is centralized and needs to be stored on-chain
 
 TBA
 
-## addNode(didAddress: string, endpointUri: string, countryCode: string, regionCode: string, datacenterId: string, requestSignature: string)
+## addNode(didAddress: string, endpointUri: string, countryCode: string, regionCode: string, datacenterId: string, requestSignature: string, requestProof: string)
 
 Storage nodes must register themselves with the protocol so they can be discovered by new users. Storage nodes provide additional metadata (via `/status` endpoint) that assists users select the most appropriate storage nodes to use.
 
@@ -63,18 +63,30 @@ This method registers a new endpoint on the network:
 4. `regionCode`: Unique region string code (see [VIP-7](./vip-7.md))
 5. `datacenterId`: Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
 6. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+7. `requestProof` : Proof provided by Verida-server
 
 An `establishmentDate` will be saved that matches the current unix timestamp (`block.timestamp`).
 
-## removeNode(didAddress: string, unregisterDatetime: uint, requestSignature: string)
+## removeNodeStart(didAddress: string, unregisterDatetime: uint, requestSignature: string, requestProof: string)
 
-Unregister a storage node from the network at the specified date:
+Request unregisteration of a storage node from the network at the specified date:
 
 1. `didAddress`: The DID that is to be removed from the network
 2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to become unavailable and their data to be deleted from `unregisterDatetime` onwards.
 3. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+4. `requestProof` : Proof provided by Verida-server
 
 Note: This does not mean the node is no longer active and managing data for users on the network. It just means it is no longer discoverable for new connections.
+
+## removeNodeComplete(didAddress: string, requestSignature: string, requestProof: string)
+
+Complete the unregisteration of a storage node.
+1. `didAddress`: The DID that is to be removed from the network
+2. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+3. `requestProof` : Proof provided by Verida-server
+
+Note: Before this function is called, connected `dataCenter` can't be removed.
+
 
 ## getNodeByAddress(didAddress: string): StorageNode
 
