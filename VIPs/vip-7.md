@@ -167,7 +167,7 @@ Example file:
 - `description`: Human readable description of the storage node
 - `datacenter`: Unique id of the data center, sourced from the `Datacenter Registry`
 - `serviceEndpoint`: Storage node endpoint
-- `establishmentDtate`: ISO 8601 date/time the storage node was made available on the network
+- `establishmentDate`: ISO 8601 date/time the storage node was made available on the network
 - `countryResidence`: Two character ISO country code
 
 ### Data Centers
