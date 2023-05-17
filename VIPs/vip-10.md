@@ -72,11 +72,11 @@ An `establishmentDate` will be saved that matches the current unix timestamp (`b
 Request unregisteration of a storage node from the network at the specified date:
 
 1. `didAddress`: The DID that is to be removed from the network
-2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to become unavailable and their data to be deleted from `unregisterDatetime` onwards.
+2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to cease to operate and their data to be deleted from `unregisterDatetime` onwards.
 3. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
 4. `requestProof` : Proof provided by Verida-server
 
-Note: This does not mean the node is no longer active and managing data for users on the network. It just means it is no longer discoverable for new connections.
+Note: During the 28 day removal window, the node will continue to manage data for users connected to that node. However, it is not available for new connections as the node will become unavailable within 28 days.
 
 ## removeNodeComplete(didAddress: string, requestSignature: string, requestProof: string)
 
