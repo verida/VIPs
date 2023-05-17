@@ -69,7 +69,7 @@ An `establishmentDate` will be saved that matches the current unix timestamp (`b
 
 ## removeNodeStart(didAddress: string, unregisterDatetime: uint, requestSignature: string, requestProof: string)
 
-Request unregisteration of a storage node from the network at the specified date:
+Request de-registering of a storage node from the network at the specified date:
 
 1. `didAddress`: The DID that is to be removed from the network
 2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to cease to operate and their data to be deleted from `unregisterDatetime` onwards.
@@ -80,7 +80,8 @@ Note: During the 28 day removal window, the node will continue to manage data fo
 
 ## removeNodeComplete(didAddress: string, requestSignature: string, requestProof: string)
 
-Complete the unregisteration of a storage node.
+Complete the de-registering of a storage node.
+
 1. `didAddress`: The DID that is to be removed from the network
 2. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
 3. `requestProof` : Proof provided by Verida-server
@@ -90,7 +91,11 @@ Note: Before this function is called, connected `dataCenter` can't be removed.
 
 ## getNodeByAddress(didAddress: string): StorageNode
 
+Get a storage node by `didAddress`. Includes an additional `status` value indicating if it is `active` or `removed` (indicating it is in the process of being de-registered).
+
 ## getNodeByEndpoint(endpointUri: string): StorageNode
+
+Get a storage node by `endpointUri`. Includes an additional `status` value indicating if it is `active` or `removed` (indicating it is in the process of being de-registered).
 
 ## addDatacenter(name: string, countryCode: string, regionCode: string, lat: int, long: int) ownerOnly
 
@@ -106,17 +111,29 @@ Remove a data center by `id`. Will only remove the data center if there are no s
 
 Get details of a list of data centers by `id`.
 
-## nodesByCountry(countryCode: string): StorageNode[]
+## getDataCentersByCountry(countryCode: string)
+
+Get details of a list of data centers by `countryCode`.
+
+## getDataCentersByRegion(regionCode: string)
+
+Get details of a list of data centers by `regionCode`.
+
+## getNodesByCountry(countryCode: string): StorageNode[]
 
 Find all active nodes by country code.
 
 Question: Does this require pagination? It could return 100's of results.
 
-## nodesByRegion(regionCode: string): StorageNode[]
+## getNodesByRegion(regionCode: string): StorageNode[]
 
 Find all active nodes by region code.
 
 Question: Does this require pagination? It could return 100's of results.
+
+## addTrustedSigner(didAddress: string)
+
+Whitelist a Verida DID that can approve the addign of new storage nodes. This is a temporary measure until VDA token staking and other security measures are implemented.
 
 # Copyright
 
