@@ -36,6 +36,16 @@ The current storage node database is centralized and needs to be stored on-chain
 - countryCode: string
 - regionCode: string
 - datacenterId: id
+- lat: int
+- long: int
+
+1. `didAddress`: The DID that is associated with the storage node. Must be only one `didAddress` registered at any time.
+2. `endpointURI`: The storage node endpoint. Must be only one `endpointURI` registered at any time.
+3. `countryCode`: Unique two-character string code (see [VIP-7](./vip-7.md))
+4. `regionCode`: Unique region string code (see [VIP-7](./vip-7.md))
+5. `datacenterId`: Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
+6. `lat`: Latitude value multiplied by 10^8
+7. `long`: Longitude value multiplied by 10^8
 
 ### Datacenter
 
@@ -49,7 +59,7 @@ The current storage node database is centralized and needs to be stored on-chain
 
 TBA
 
-## addNode(didAddress: string, endpointUri: string, countryCode: string, regionCode: string, datacenterId: string, requestSignature: string, requestProof: string)
+## addNode(nodeInfo: StorageNode, requestSignature: string, requestProof: string, authSignature: string)
 
 Storage nodes must register themselves with the protocol so they can be discovered by new users. Storage nodes provide additional metadata (via `/status` endpoint) that assists users select the most appropriate storage nodes to use.
 
@@ -57,13 +67,10 @@ It's not possible to re-use a DID to register multiple storage nodes. This is be
 
 This method registers a new endpoint on the network:
 
-1. `didAddress`: The DID that is associated with the storage node. Must be only one `didAddress` registered at any time.
-2. `endpointURI`: The storage node endpoint. Must be only one `endpointURI` registered at any time.
-3. `countryCode`: Unique two-character string code (see [VIP-7](./vip-7.md))
-4. `regionCode`: Unique region string code (see [VIP-7](./vip-7.md))
-5. `datacenterId`: Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
-6. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
-7. `requestProof` : Proof provided by Verida-server
+1. `nodeInfo` : Storage node to be added
+2. `requestSignature`: The request parameters signed by the `nodeInfo.didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+3. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
+4.  `authSignature` : Signature signed by a trusted signer.
 
 An `establishmentDate` will be saved that matches the current unix timestamp (`block.timestamp`).
 
@@ -74,7 +81,7 @@ Request de-registering of a storage node from the network at the specified date:
 1. `didAddress`: The DID that is to be removed from the network
 2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to cease to operate and their data to be deleted from `unregisterDatetime` onwards.
 3. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
-4. `requestProof` : Proof provided by Verida-server
+4. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
 
 Note: During the 28 day removal window, the node will continue to manage data for users connected to that node. However, it is not available for new connections as the node will become unavailable within 28 days.
 
@@ -84,20 +91,20 @@ Complete the de-registering of a storage node.
 
 1. `didAddress`: The DID that is to be removed from the network
 2. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
-3. `requestProof` : Proof provided by Verida-server
+3. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
 
 Note: Before this function is called, connected `dataCenter` can't be removed.
 
 
-## getNodeByAddress(didAddress: string): StorageNode
+## getNodeByAddress(didAddress: string): [StorageNode, string]
 
 Get a storage node by `didAddress`. Includes an additional `status` value indicating if it is `active` or `removed` (indicating it is in the process of being de-registered).
 
-## getNodeByEndpoint(endpointUri: string): StorageNode
+## getNodeByEndpoint(endpointUri: string): [StorageNode, string]
 
 Get a storage node by `endpointUri`. Includes an additional `status` value indicating if it is `active` or `removed` (indicating it is in the process of being de-registered).
 
-## addDatacenter(name: string, countryCode: string, regionCode: string, lat: int, long: int) ownerOnly
+## addDatacenter(data: Datacenter) ownerOnly
 
 Add a data center to the network. `id` will be autoincremented.
 
