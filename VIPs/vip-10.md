@@ -50,7 +50,7 @@ The current storage node database is centralized and needs to be stored on-chain
 
 ## State variables
 
-- `STAKE_PER_SLOT` (const): The number of tokens that must be staked by a storage node operator for each storage slot they make available to the network. `default=60`. Only contract owner can change at this stage. _In the future this will become dynamic based on market dynamics._
+- `STAKE_PER_SLOT` (const): The number of tokens that must be staked by a storage node operator for each storage slot they make available to the network. `default=30`. Only contract owner can change at this stage. _In the future this will become dynamic based on market dynamics._
 - `NODE_ISSUE_FEE` (const): The number of VDA tokens that must be deposited when recording an issue against a storage node. `default=5`
 - `STAKING_REQUIRED` (const): Indicate if staking is required when registering a new node. `default=false`
 - `MIN_SLOTS` (const): Minimum number of storage slots a storage node must provide. `default=20000`
