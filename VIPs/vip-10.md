@@ -38,7 +38,7 @@ The current storage node database is centralized and needs to be stored on-chain
 - `datacenterId` (id): Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
 - `lat` (int): Latitude value multiplied by 10^8
 - `long` (int): Longitude value multiplied by 10^8
-- `numberslots` (int): The number of storage slots available on this storage node
+- `numberslots` (int): The number of storage slots available on this storage node. Must be within the range of `MIN_SLOTS` and `MAX_SLOTS`.
 
 ### Datacenter
 
@@ -52,6 +52,9 @@ The current storage node database is centralized and needs to be stored on-chain
 
 - `STAKE_PER_SLOT` (const): The number of tokens that must be staked by a storage node operator for each storage slot they make available to the network. `default=60`. Only contract owner can change at this stage. _In the future this will become dynamic based on market dynamics._
 - `NODE_ISSUE_FEE` (const): The number of VDA tokens that must be deposited when recording an issue against a storage node. `default=5`
+- `STAKING_REQUIRED` (const): Indicate if staking is required when registering a new node. `default=false`
+- `MIN_SLOTS` (const): Minimum number of storage slots a storage node must provide. `default=20000`
+- `MAX_SLOTS` (const): Maximum number of storage slots a storage node can provide. `default=20000`
 
 ## addNode(nodeInfo: StorageNode, requestSignature: string, requestProof: string, authSignature: string)
 
@@ -59,7 +62,7 @@ Storage nodes must register themselves with the protocol so they can be discover
 
 It's not possible to re-use a DID to register multiple storage nodes. This is because storage endpoints sign their responses using the DID private key to enhance security of the protocol.
 
-The requester must provide VDA tokens to stake. The number of staked tokens must be `numberSlots` * `STAKE_PER_SLOT`. The staked tokens will be registered against the storage node being registered so they can be unstaked in the future (see `withdraw()` and `removeNodeComplete()`).
+The requester must provide VDA tokens to stake, if `STAKING_REQUIRED=true`. The number of staked tokens must be `numberSlots` * `STAKE_PER_SLOT`. The staked tokens will be registered against the storage node being registered so they can be unstaked in the future (see `withdraw()` and `removeNodeComplete()`).
 
 This method registers a new endpoint on the network:
 
