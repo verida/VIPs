@@ -31,39 +31,38 @@ The current storage node database is centralized and needs to be stored on-chain
 
 ### StorageNode
 
-- didAddress: string
-- endpointUri: string
-- countryCode: string
-- regionCode: string
-- datacenterId: id
-- lat: int
-- long: int
-
-1. `didAddress`: The DID that is associated with the storage node. Must be only one `didAddress` registered at any time.
-2. `endpointURI`: The storage node endpoint. Must be only one `endpointURI` registered at any time.
-3. `countryCode`: Unique two-character string code (see [VIP-7](./vip-7.md))
-4. `regionCode`: Unique region string code (see [VIP-7](./vip-7.md))
-5. `datacenterId`: Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
-6. `lat`: Latitude value multiplied by 10^8
-7. `long`: Longitude value multiplied by 10^8
+- `didAddress` (string): The DID that is associated with the storage node. Must be only one `didAddress` registered at any time.
+- `endpointUri` (string): The storage node endpoint. Must be only one `endpointURI` registered at any time.
+- `countryCode` (string): Unique two-character string code (see [VIP-7](./vip-7.md))
+- `regionCode` (string): Unique region string code (see [VIP-7](./vip-7.md))
+- `datacenterId` (id): Unique datacenter identifier. Must match an existing datacenter available via `getDatacenters()`.
+- `lat` (int): Latitude value multiplied by 10^8
+- `long` (int): Longitude value multiplied by 10^8
+- `numberslots` (int): The number of storage slots available on this storage node. Must be within the range of `MIN_SLOTS` and `MAX_SLOTS`.
 
 ### Datacenter
 
-- id: int
-- countryCode: string
-- regionCode: string
-- lat: int
-- long: int
+- `id` (int)
+- `countryCode` (string)
+- `regionCode` (string)
+- `lat` (int)
+- `long` (int)
 
 ## State variables
 
-TBA
+- `STAKE_PER_SLOT` (const): The number of tokens that must be staked by a storage node operator for each storage slot they make available to the network. `default=30`. Only contract owner can change at this stage. _In the future this will become dynamic based on market dynamics._
+- `NODE_ISSUE_FEE` (const): The number of VDA tokens that must be deposited when recording an issue against a storage node. `default=5`
+- `STAKING_REQUIRED` (const): Indicate if staking is required when registering a new node. `default=false`
+- `MIN_SLOTS` (const): Minimum number of storage slots a storage node must provide. `default=20000`
+- `MAX_SLOTS` (const): Maximum number of storage slots a storage node can provide. `default=20000`
 
 ## addNode(nodeInfo: StorageNode, requestSignature: string, requestProof: string, authSignature: string)
 
 Storage nodes must register themselves with the protocol so they can be discovered by new users. Storage nodes provide additional metadata (via `/status` endpoint) that assists users select the most appropriate storage nodes to use.
 
 It's not possible to re-use a DID to register multiple storage nodes. This is because storage endpoints sign their responses using the DID private key to enhance security of the protocol.
+
+The requester must provide VDA tokens to stake, if `STAKING_REQUIRED=true`. The number of staked tokens must be `numberSlots` * `STAKE_PER_SLOT`. The staked tokens will be registered against the storage node being registered so they can be unstaked in the future (see `withdraw()` and `removeNodeComplete()`).
 
 This method registers a new endpoint on the network:
 
@@ -95,6 +94,7 @@ Complete the de-registering of a storage node.
 
 Note: Before this function is called, connected `dataCenter` can't be removed.
 
+When successfully called, the staked tokens for this storage node should be released to the requester.
 
 ## getNodeByAddress(didAddress: string): [StorageNode, string]
 
@@ -141,6 +141,51 @@ Question: Does this require pagination? It could return 100's of results.
 ## addTrustedSigner(didAddress: string)
 
 Whitelist a Verida DID that can approve the addign of new storage nodes. This is a temporary measure until VDA token staking and other security measures are implemented.
+
+## withdraw(didAddress: string, amount: int, requestSignature: string, requestProof: string)
+
+Allow a storage node to withdraw staked tokens. The storage node can only withdraw excess tokens to ensure `amountStaked` > `STAKE_PER_SLOT * numberSlots` is always true.
+
+This can happen if a node stakes tokens, then the `STAKE_PER_SLOT` decreases and the node can with draw the tokens that are no longer required for staking.
+
+This also allows any account to withdraw tokens that may have been "earned" by logging an issue against a storage node.
+
+## deposit(didAddress: string)
+
+Allow a storage node to deposit more staked tokens.
+
+This is necessary if the `STAKE_PER_SLOT` increases and the node must deposit more tokens to meet their staking requirements.
+
+Note: We have not yet handled the scenario where STAKE_PER_SLOT is increased and storage node operators do not have enough tokens staked. This will be handled later. We will implement storage node operators earning a revenue from their nodes. They won't be able to earn revenue if they don't have enough tokens staked.
+
+## slash(didAddress: string, amount: int, moreInfoUrl: string)
+
+Allow the contract owner to slash staked tokens for a given storage node `didAddress`. This will only be used in extreme circumstances by the Verida Foundation and will be replaced by a more transparent, rules based slashing engine in a future release.
+
+`moreInfoUrl` is a required field to create an on-chain pointer to where more information can be found about this slashing incident.
+
+The slashed tokens will be distributed to all accounts that recorded an issue against the node `didAddress` in proportion the number of `NODE_ISSUE_FEE`s they deposited. These tokens can then be withdrawn via `withdraw()`.
+
+## logNodeIssue(didAddress: string, reasonCode: int, requestSignature: string, requestProof: string)
+
+Allow any valid Verida DID to record an issue against a node.
+
+In order to prevent malicious reporting and spamming:
+
+1. The account logging the issue must include VDA tokens equal to `NODE_ISSUE_FEE`.
+2. Accounts can not log an issue against the same node more than every hour.
+3. Accounts can not log more than 4 issues against any node for a given 24 hour period.
+
+Valid `reasonCode`s:
+
+- `10`: Poor performance
+- `20`: Unavailable > 10 minutes
+- `21`: Unavailable > 30 minutes
+- `22`: Unavailable > 1 hour
+- `23`: Unavailable > 3 hours
+- `24`: Unavailable > 24 hours
+
+The list of valid `reasonCode`s will expand over time.
 
 # Copyright
 
