@@ -39,6 +39,9 @@ The current storage node database is centralized and needs to be stored on-chain
 - `lat` (int): Latitude value multiplied by 10^8
 - `long` (int): Longitude value multiplied by 10^8
 - `numberslots` (int): The number of storage slots available on this storage node. Must be within the range of `MIN_SLOTS` and `MAX_SLOTS`.
+- `acceptFallbackSlots` (boolean): Indicates if this storage node is willing to accept data from nodes that are shutting down.
+- `status` (enum): [active, removing, removed].
+- `fallbackNodeAddress` (optional): Only specified when `status=removing`. `didAddress` of the storage node that is assigned to be the fallback storage node.
 
 ### Datacenter
 
@@ -79,8 +82,9 @@ Request de-registering of a storage node from the network at the specified date:
 
 1. `didAddress`: The DID that is to be removed from the network
 2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to cease to operate and their data to be deleted from `unregisterDatetime` onwards.
-3. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
-4. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
+3. `fallbackNodeName`: The name of the storage node that will take responsibility for user data that isn't migrated away from this node before the unregister timestamp. The fallback node **must** have `acceptFallbackSlots=true` and must have sufficient node capacity to meet all the slots on this node.
+4. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+5. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
 
 Note: During the 28 day removal window, the node will continue to manage data for users connected to that node. However, it is not available for new connections as the node will become unavailable within 28 days.
 
@@ -89,8 +93,9 @@ Note: During the 28 day removal window, the node will continue to manage data fo
 Complete the de-registering of a storage node.
 
 1. `didAddress`: The DID that is to be removed from the network
-2. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
-3. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
+2. `fallbackMigrationProof`: A message signed by the `fallbackNode` specified in the original `removeNodeStart()` request confirming the migration of any remaining data has been completed. The message format is `${didAddress}/${$fallbackNodeId}-migrated`.
+3. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+4. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
 
 Note: Before this function is called, connected `dataCenter` can't be removed.
 
@@ -184,6 +189,8 @@ Valid `reasonCode`s:
 - `22`: Unavailable > 1 hour
 - `23`: Unavailable > 3 hours
 - `24`: Unavailable > 24 hours
+- `30`: Data incomplete
+- `31`: Data corrupt
 
 The list of valid `reasonCode`s will expand over time.
 
