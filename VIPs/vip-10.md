@@ -83,10 +83,13 @@ Request de-registering of a storage node from the network at the specified date:
 1. `didAddress`: The DID that is to be removed from the network
 2. `unregisterDatetime`: The unix timestamp of when the storage node will be removed from the network. Must be at least 28 days in the future to ensure users have sufficient time to migrate away from this node to another node. All users must expect the node to cease to operate and their data to be deleted from `unregisterDatetime` onwards.
 3. `fallbackNodeName`: The name of the storage node that will take responsibility for user data that isn't migrated away from this node before the unregister timestamp. The fallback node **must** have `acceptFallbackSlots=true` and must have sufficient node capacity to meet all the slots on this node.
-4. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
-5. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
+4. `availableSlotsProof`: A message signed by the `fallbackNode` specifying in this `removeNodeStart()` request confirming the number of slots available at a given datetime in the last 30 minutes. The message format is `${fallbackNodeId}/${availableSlots}/${timestamp}`, where `timestamp` is unix epoch in seconds. This proof will be fetched from the `/status` endpoint on the fallback storage node. Will be verified by `VDA-Verification-Base` library.
+5. `requestSignature`: The request parameters signed by the `didAddress` private key. Will be verified by `VDA-Verification-Base` library.
+6. `requestProof` : Used to verify request. Signed by private key of `nodeInfo.didAddress`
 
 Note: During the 28 day removal window, the node will continue to manage data for users connected to that node. However, it is not available for new connections as the node will become unavailable within 28 days.
+
+Verification is not implemented
 
 ## removeNodeComplete(didAddress: string, requestSignature: string, requestProof: string)
 
