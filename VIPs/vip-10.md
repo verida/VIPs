@@ -89,8 +89,6 @@ Request de-registering of a storage node from the network at the specified date:
 
 Note: During the 28 day removal window, the node will continue to manage data for users connected to that node. However, it is not available for new connections as the node will become unavailable within 28 days.
 
-Verification is not implemented
-
 ## removeNodeComplete(didAddress: string, requestSignature: string, requestProof: string)
 
 Complete the de-registering of a storage node.
